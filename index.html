@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tyler's Budget Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#1a1d27; --panel:#242836; --panel2:#2c3144; --ink:#e8eaf2; --muted:#9aa0b5;
+    --orange:#f2762e; --green:#3ddc84; --red:#ff5c6c; --amber:#ffc94d; --blue:#5b9bff;
+    --bar:#3a4059;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif;padding:18px;max-width:1250px;margin:0 auto}
+  h1{color:var(--orange);font-size:26px;margin-bottom:2px}
+  h1[contenteditable]:hover,h1[contenteditable]:focus{outline:1px dashed var(--orange);outline-offset:4px;border-radius:4px;cursor:text}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+  .card{background:var(--panel);border-radius:12px;padding:16px;border:1px solid #333a52}
+  .card h2{font-size:15px;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0}
+  .row label{font-size:13px;color:var(--muted)}
+  input[type=number],input[type=text]{background:var(--panel2);border:1px solid #3a4059;color:var(--ink);border-radius:6px;padding:5px 8px;width:110px;font-size:14px;text-align:right}
+  input[type=text]{text-align:left;width:150px}
+  input[type=range]{flex:1;accent-color:var(--orange)}
+  .stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed #3a4059;font-size:14px}
+  .stat span{color:var(--muted);flex:1;min-width:0}
+  .stat b{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .big{font-size:28px;font-weight:700;text-align:center;padding:10px;border-radius:10px;background:var(--panel2);margin:8px 0;font-variant-numeric:tabular-nums}
+  .pts-ok{color:var(--green)} .pts-over{color:var(--red)} .pts-left{color:var(--amber)}
+  .bucket{margin:10px 0}
+  .bucket .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
+  .bucket .top b{font-variant-numeric:tabular-nums}
+  .barwrap{height:14px;background:var(--bar);border-radius:7px;overflow:hidden}
+  .bar{height:100%;border-radius:7px;transition:width .2s}
+  .ctrl{display:flex;gap:8px;align-items:center;margin-top:4px}
+  .goal{background:var(--panel2);border-radius:10px;padding:12px}
+  .goal .head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+  .goal .head input[type=text]{font-weight:600;background:transparent;border:none;color:var(--ink);font-size:15px;flex:1;min-width:0}
+  .pulls{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:8px 0}
+  .pull{text-align:center;font-size:11px;color:var(--muted)}
+  .pull input{width:100%;text-align:center;padding:3px}
+  .eta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:13px;margin-top:6px;color:var(--muted)}
+  .eta b{color:var(--ink);font-variant-numeric:tabular-nums}
+  button{background:var(--orange);border:none;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px}
+  button.ghost{background:transparent;border:1px solid #3a4059;color:var(--muted)}
+  button.danger{background:transparent;border:1px solid var(--red);color:var(--red);padding:2px 8px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{padding:4px 6px;text-align:right;border-bottom:1px solid #333a52;white-space:nowrap}
+  td:first-child,th:first-child{text-align:left}
+  .scroll{overflow-x:auto;margin:4px 0;max-width:100%}
+  .tag{font-size:11px;background:var(--panel2);color:var(--muted);border-radius:20px;padding:2px 10px}
+  .full{grid-column:1/-1}
+  canvas{max-height:260px}
+  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px}
+  .switch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
+  .hint{font-size:12px;color:var(--muted);font-style:italic;margin:4px 0}
+  .goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<h1 id="docTitle" contenteditable="true" spellcheck="false" title="Click to rename — handy when making a copy for someone else">Tyler's Budget Planner</h1>
+<div class="sub">Weekly surplus = your attribute points. Spend every point. Plan raises. Aim goals at any bucket. Click the title or any bucket name to rename.</div>
+<div class="toolbar">
+  <button onclick="saveAs()">Save As — download copy</button>
+  <button class="ghost" onclick="resetAll()">Reset to defaults</button>
+  <span class="tag">autosaves on THIS device · Save As bakes your data into a file for OneDrive / other devices / sharing</span>
+</div>
+
+<div class="grid">
+
+  <!-- 1 INCOME -->
+  <div class="card">
+    <h2>1 · Income</h2>
+    <div class="row"><label>Hourly rate ($/hr)</label><input type="number" id="rate" step="0.5"></div>
+    <div class="row"><label>Hours / week</label><input type="number" id="hours"></div>
+    <div class="row"><label>Side rate ($/hr)</label><input type="number" id="sideRate" step="0.5"></div>
+    <div class="row"><label>Side hours / week</label><input type="number" id="sideHours"></div>
+    <div class="row"><label>Tax / deduction %</label><input type="number" id="ded" step="0.1"></div>
+    <div class="stat"><span>Gross weekly pay</span><b id="grossWeekly">$1,400.00</b></div>
+    <div class="stat"><span>Gross monthly pay</span><b id="grossMonthly">$6,066.67</b></div>
+    <div class="stat"><span>Net weekly pay</span><b id="netWeekly">$1,065.40</b></div>
+    <div class="stat"><span>Net monthly pay</span><b id="netMonthly">$4,616.73</b></div>
+  </div>
+
+  <!-- 2 BILLS -->
+  <div class="card">
+    <h2>2 · Bills — fixed <button onclick="addRow('bills')">+ add</button></h2>
+    <div class="hint">Long-term commitments: rent/mortgage, utilities, essentials. These don't go away easily.</div>
+    <table id="billsTable"><thead><tr><th>Bill</th><th>$/month</th><th></th></tr></thead><tbody><tr><td><input type="text" value="Rent" onchange="S.bills[0][0]=this.value;save()"></td>
+      <td><input type="number" value="1600" step="0.01" onchange="S.bills[0][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.bills.splice(0,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Electric" onchange="S.bills[1][0]=this.value;save()"></td>
+      <td><input type="number" value="0" step="0.01" onchange="S.bills[1][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.bills.splice(1,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Heat" onchange="S.bills[2][0]=this.value;save()"></td>
+      <td><input type="number" value="0" step="0.01" onchange="S.bills[2][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.bills.splice(2,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Internet" onchange="S.bills[3][0]=this.value;save()"></td>
+      <td><input type="number" value="96" step="0.01" onchange="S.bills[3][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.bills.splice(3,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Food" onchange="S.bills[4][0]=this.value;save()"></td>
+      <td><input type="number" value="50" step="0.01" onchange="S.bills[4][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.bills.splice(4,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Home Health" onchange="S.bills[5][0]=this.value;save()"></td>
+      <td><input type="number" value="100" step="0.01" onchange="S.bills[5][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.bills.splice(5,1);buildStatic();render()">×</button></td></tr></tbody></table>
+    <div class="stat"><span>Fixed bills total</span><b id="billsTotal">$1,846.00</b></div>
+  </div>
+
+  <!-- 3 RECURRING -->
+  <div class="card">
+    <h2>3 · Recurring — removable <button onclick="addRow('recurring')">+ add</button></h2>
+    <div class="hint">Subscriptions &amp; debt payments. Anything here can be cancelled or paid off — your cut-to-save list.</div>
+    <table id="recurringTable"><thead><tr><th>Item</th><th>$/month</th><th></th></tr></thead><tbody><tr><td><input type="text" value="Netflix" onchange="S.recurring[0][0]=this.value;save()"></td>
+      <td><input type="number" value="28.5" step="0.01" onchange="S.recurring[0][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(0,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Spotify" onchange="S.recurring[1][0]=this.value;save()"></td>
+      <td><input type="number" value="18.99" step="0.01" onchange="S.recurring[1][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(1,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Amazon Prime" onchange="S.recurring[2][0]=this.value;save()"></td>
+      <td><input type="number" value="7.99" step="0.01" onchange="S.recurring[2][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(2,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="E-Z Pass" onchange="S.recurring[3][0]=this.value;save()"></td>
+      <td><input type="number" value="15" step="0.01" onchange="S.recurring[3][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(3,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Car Wash" onchange="S.recurring[4][0]=this.value;save()"></td>
+      <td><input type="number" value="40" step="0.01" onchange="S.recurring[4][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(4,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Gym" onchange="S.recurring[5][0]=this.value;save()"></td>
+      <td><input type="number" value="25" step="0.01" onchange="S.recurring[5][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(5,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Pay Pal" onchange="S.recurring[6][0]=this.value;save()"></td>
+      <td><input type="number" value="50" step="0.01" onchange="S.recurring[6][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.recurring.splice(6,1);buildStatic();render()">×</button></td></tr></tbody></table>
+    <div class="stat"><span>Recurring total</span><b id="recurringTotal">$185.48</b></div>
+    <div class="stat"><span>If you cleared this whole list you'd free up</span><b id="recurringFree" class="pts-ok">$185.48/mo</b></div>
+  </div>
+
+  <!-- 4 POINTS -->
+  <div class="card">
+    <h2>4 · Attribute Points <span class="switch"><input type="checkbox" id="applyRaise"><label for="applyRaise">include raise</label></span></h2>
+    <div class="hint">Weekly surplus after ALL bills + recurring. Sliders move in $5 steps and stop when points run out.</div>
+    <div class="big pts-ok" id="pointsBox">$596.60 / wk</div>
+    <div id="buckets"><div class="bucket"><div class="top"><span>Vehicle Maint.</span><b id="bucketsVal0">$170.00</b></div>
+        <div class="barwrap"><div class="bar" id="bucketsBar0" style="background: rgb(91, 155, 255); width: 28.495%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="175" step="5" id="bucketsRng0" oninput="setAlloc(0,+this.value)">
+        <input type="number" step="5" style="width:90px" id="bucketsNum0" onchange="setAlloc(0,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Personal / Fun</span><b id="bucketsVal1">$170.00</b></div>
+        <div class="barwrap"><div class="bar" id="bucketsBar1" style="background: rgb(242, 118, 46); width: 28.495%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="175" step="5" id="bucketsRng1" oninput="setAlloc(1,+this.value)">
+        <input type="number" step="5" style="width:90px" id="bucketsNum1" onchange="setAlloc(1,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Taxes (CPA)</span><b id="bucketsVal2">$20.00</b></div>
+        <div class="barwrap"><div class="bar" id="bucketsBar2" style="background: rgb(167, 139, 250); width: 3.35235%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="25" step="5" id="bucketsRng2" oninput="setAlloc(2,+this.value)">
+        <input type="number" step="5" style="width:90px" id="bucketsNum2" onchange="setAlloc(2,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Media</span><b id="bucketsVal3">$40.00</b></div>
+        <div class="barwrap"><div class="bar" id="bucketsBar3" style="background: rgb(255, 201, 77); width: 6.70469%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="45" step="5" id="bucketsRng3" oninput="setAlloc(3,+this.value)">
+        <input type="number" step="5" style="width:90px" id="bucketsNum3" onchange="setAlloc(3,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Savings</span><b id="bucketsVal4">$195.00</b></div>
+        <div class="barwrap"><div class="bar" id="bucketsBar4" style="background: rgb(61, 220, 132); width: 32.6854%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="200" step="5" id="bucketsRng4" oninput="setAlloc(4,+this.value)">
+        <input type="number" step="5" style="width:90px" id="bucketsNum4" onchange="setAlloc(4,+this.value||0)"></div></div></div>
+    <div class="stat"><span>Allocated</span><b id="allocTotal">$595.00</b></div>
+    <div class="big pts-left" id="remainBox" style="font-size:22px">Remaining: $1.60</div>
+  </div>
+
+  <!-- 5 RAISE SIM -->
+  <div class="card">
+    <h2>5 · What-If: Raise Simulator</h2>
+    <div class="row"><label>New hourly rate ($/hr)</label><input type="number" id="newRate" step="0.5"></div>
+    <div class="row"><label>Extra main-job hrs/wk</label><input type="number" id="extraHours"></div>
+    <div class="row"><label>New side hrs/wk</label><input type="number" id="wSideHours"></div>
+    <div class="row"><label>New side rate ($/hr)</label><input type="number" id="wSideRate" step="0.5"></div>
+    <div class="stat"><span>New gross weekly</span><b id="wGross">$2,800.00</b></div>
+    <div class="stat"><span>New gross monthly</span><b id="wGrossMo">$12,133.33</b></div>
+    <div class="stat"><span>New net weekly</span><b id="wNet">$2,130.80</b></div>
+    <div class="stat"><span>New net monthly</span><b id="wNetMo">$9,233.47</b></div>
+    <div class="big pts-ok" id="gainBox" style="font-size:22px">New points: +$1,065.40 / wk</div>
+    <div class="hint">Spend ONLY the new points:</div>
+    <div id="raiseBuckets"><div class="bucket"><div class="top"><span>Vehicle Maint.</span><b id="raiseBucketsVal0">$365.00</b></div>
+        <div class="barwrap"><div class="bar" id="raiseBucketsBar0" style="background: rgb(91, 155, 255); width: 34.2594%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="1070" step="5" id="raiseBucketsRng0" oninput="setRaiseAlloc(0,+this.value)">
+        <input type="number" step="5" style="width:90px" id="raiseBucketsNum0" onchange="setRaiseAlloc(0,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Personal / Fun</span><b id="raiseBucketsVal1">$0.00</b></div>
+        <div class="barwrap"><div class="bar" id="raiseBucketsBar1" style="background: rgb(242, 118, 46); width: 0%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="705" step="5" id="raiseBucketsRng1" oninput="setRaiseAlloc(1,+this.value)">
+        <input type="number" step="5" style="width:90px" id="raiseBucketsNum1" onchange="setRaiseAlloc(1,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Taxes (CPA)</span><b id="raiseBucketsVal2">$0.00</b></div>
+        <div class="barwrap"><div class="bar" id="raiseBucketsBar2" style="background: rgb(167, 139, 250); width: 0%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="705" step="5" id="raiseBucketsRng2" oninput="setRaiseAlloc(2,+this.value)">
+        <input type="number" step="5" style="width:90px" id="raiseBucketsNum2" onchange="setRaiseAlloc(2,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Media</span><b id="raiseBucketsVal3">$0.00</b></div>
+        <div class="barwrap"><div class="bar" id="raiseBucketsBar3" style="background: rgb(255, 201, 77); width: 0%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="705" step="5" id="raiseBucketsRng3" oninput="setRaiseAlloc(3,+this.value)">
+        <input type="number" step="5" style="width:90px" id="raiseBucketsNum3" onchange="setRaiseAlloc(3,+this.value||0)"></div></div><div class="bucket"><div class="top"><span>Savings</span><b id="raiseBucketsVal4">$0.00</b></div>
+        <div class="barwrap"><div class="bar" id="raiseBucketsBar4" style="background: rgb(61, 220, 132); width: 0%;"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="705" step="5" id="raiseBucketsRng4" oninput="setRaiseAlloc(4,+this.value)">
+        <input type="number" step="5" style="width:90px" id="raiseBucketsNum4" onchange="setRaiseAlloc(4,+this.value||0)"></div></div></div>
+    <div class="big pts-left" id="raiseRemainBox" style="font-size:20px">New points remaining: $700.40</div>
+    <div class="hint">Tick "include raise" in panel 4 to preview your whole budget with the raise applied.</div>
+  </div>
+
+  <!-- 6 GOALS -->
+  <div class="card full">
+    <h2>6 · Goal Planner <button onclick="addGoal()">+ add goal</button></h2>
+    <div class="hint">All goals share one 100% pool per bucket — if one goal takes 75% of Vehicle, every other goal can only take up to the remaining 25%. Inputs stop at what's available. <b style="color:var(--ink)">Reserves:</b> give a bucket a Reserve $ target and its weekly money refills that stash FIRST — goals only see the overflow once it's full. Hit "−" to log a spend from a reserve; refilling restarts and goal timelines adjust.</div>
+    <div class="hint" id="goalRaiseNote" style="color:var(--green);font-style:normal">What-if lines use your panel 5 split of the +$1,065.40/wk raise.</div>
+    <div class="scroll"><table id="bucketSummary" style="margin:10px 0">
+      <thead><tr><th>Bucket</th><th>Weekly $</th><th>Reserve $</th><th>Balance</th><th>Status</th><th>→ Goals</th><th>Left over</th><th style="width:18%"></th></tr></thead>
+      <tbody><tr><td><input type="text" style="width:112px" value="Vehicle Maint." title="rename this bucket" onchange="renameBucket(0,this.value)"></td><td id="resWk0">$170.00</td>
+      <td><input type="number" min="0" step="50" style="width:78px" id="resT0" value="2000" onchange="S.reserveTarget[0]=+this.value||0;render()"></td>
+      <td><input type="number" min="0" step="10" style="width:78px" id="resB0" value="0" onchange="S.reserveBal[0]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(0)">−</button></td>
+      <td id="resStatus0" style="text-align: left; color: var(--muted);">—</td>
+      <td id="resGoals0">$170.00 (100%)</td><td id="resLeft0"><b style="color:var(--muted)">$0.00</b></td>
+      <td><div class="barwrap"><div class="bar" id="resBar0" style="background: rgb(91, 155, 255); width: 0%;" title="left over"></div></div></td></tr><tr><td><input type="text" style="width:112px" value="Personal / Fun" title="rename this bucket" onchange="renameBucket(1,this.value)"></td><td id="resWk1">$170.00</td>
+      <td><input type="number" min="0" step="50" style="width:78px" id="resT1" value="0" onchange="S.reserveTarget[1]=+this.value||0;render()"></td>
+      <td><input type="number" min="0" step="10" style="width:78px" id="resB1" value="0" onchange="S.reserveBal[1]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(1)">−</button></td>
+      <td id="resStatus1" style="text-align: left; color: var(--muted);">—</td>
+      <td id="resGoals1">$42.50 (25%)</td><td id="resLeft1"><b style="color:var(--green)">$127.50</b></td>
+      <td><div class="barwrap"><div class="bar" id="resBar1" style="background: rgb(242, 118, 46); width: 75%;" title="left over"></div></div></td></tr><tr><td><input type="text" style="width:112px" value="Taxes (CPA)" title="rename this bucket" onchange="renameBucket(2,this.value)"></td><td id="resWk2">$20.00</td>
+      <td><input type="number" min="0" step="50" style="width:78px" id="resT2" value="0" onchange="S.reserveTarget[2]=+this.value||0;render()"></td>
+      <td><input type="number" min="0" step="10" style="width:78px" id="resB2" value="0" onchange="S.reserveBal[2]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(2)">−</button></td>
+      <td id="resStatus2" style="text-align: left; color: var(--muted);">—</td>
+      <td id="resGoals2">$0.00 (0%)</td><td id="resLeft2"><b style="color:var(--green)">$20.00</b></td>
+      <td><div class="barwrap"><div class="bar" id="resBar2" style="background: rgb(167, 139, 250); width: 100%;" title="left over"></div></div></td></tr><tr><td><input type="text" style="width:112px" value="Media" title="rename this bucket" onchange="renameBucket(3,this.value)"></td><td id="resWk3">$40.00</td>
+      <td><input type="number" min="0" step="50" style="width:78px" id="resT3" value="0" onchange="S.reserveTarget[3]=+this.value||0;render()"></td>
+      <td><input type="number" min="0" step="10" style="width:78px" id="resB3" value="0" onchange="S.reserveBal[3]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(3)">−</button></td>
+      <td id="resStatus3" style="text-align: left; color: var(--muted);">—</td>
+      <td id="resGoals3">$0.00 (0%)</td><td id="resLeft3"><b style="color:var(--green)">$40.00</b></td>
+      <td><div class="barwrap"><div class="bar" id="resBar3" style="background: rgb(255, 201, 77); width: 100%;" title="left over"></div></div></td></tr><tr><td><input type="text" style="width:112px" value="Savings" title="rename this bucket" onchange="renameBucket(4,this.value)"></td><td id="resWk4">$195.00</td>
+      <td><input type="number" min="0" step="50" style="width:78px" id="resT4" value="0" onchange="S.reserveTarget[4]=+this.value||0;render()"></td>
+      <td><input type="number" min="0" step="10" style="width:78px" id="resB4" value="0" onchange="S.reserveBal[4]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(4)">−</button></td>
+      <td id="resStatus4" style="text-align: left; color: var(--muted);">—</td>
+      <td id="resGoals4">$97.50 (50%)</td><td id="resLeft4"><b style="color:var(--green)">$97.50</b></td>
+      <td><div class="barwrap"><div class="bar" id="resBar4" style="background: rgb(61, 220, 132); width: 50%;" title="left over"></div></div></td></tr></tbody>
+    </table></div>
+    <div class="goalgrid" id="goals"><div class="goal"><div class="head">
+        <input type="text" value="Vehicle ($35k)" onchange="S.goals[0].name=this.value;save()">
+        <button class="danger" onclick="S.goals.splice(0,1);buildStatic();render()">×</button></div>
+      <div class="row"><label>Target $</label><input type="number" value="35000" onchange="S.goals[0].target=+this.value||0;render()"></div>
+      <div class="row"><label>Already saved $</label><input type="number" value="0" onchange="S.goals[0].saved=+this.value||0;render()"></div>
+      <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
+      <div class="pulls"><div class="pull">Vehicl <span id="pullFree0_0">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull0_0" value="100" onchange="setPull(0,0,this.value)">%</div><div class="pull">Person <span id="pullFree0_1">(75% max)</span><br>
+        <input type="number" min="0" max="75" step="5" id="pull0_1" value="0" onchange="setPull(0,1,this.value)">%</div><div class="pull">Taxes <span id="pullFree0_2">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull0_2" value="0" onchange="setPull(0,2,this.value)">%</div><div class="pull">Media <span id="pullFree0_3">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull0_3" value="0" onchange="setPull(0,3,this.value)">%</div><div class="pull">Saving <span id="pullFree0_4">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull0_4" value="50" onchange="setPull(0,4,this.value)">%</div></div>
+      <div class="barwrap"><div class="bar" id="goalBar0" style="background: rgb(91, 155, 255); width: 0%;"></div></div>
+      <div class="eta"><span>gets <b id="goalWk0">$267.50</b>/wk</span><span><b id="goalWeeks0">56.1 wks (12.9 mo)</b></span><span>done <b id="goalDate0">Aug 2027</b></span></div>
+      <div class="eta" id="goalRaise0" style="color:var(--green)"><span>w/ raise: <b>$632.50</b>/wk</span><span><b>23.7 wks (5.5 mo)</b></span><span>done <b>Dec 2026</b></span></div>
+      <div class="hint" id="goalSrc0">from: Vehicl $170.00 · Saving $97.50</div></div><div class="goal"><div class="head">
+        <input type="text" value="Home / Moving" onchange="S.goals[1].name=this.value;save()">
+        <button class="danger" onclick="S.goals.splice(1,1);buildStatic();render()">×</button></div>
+      <div class="row"><label>Target $</label><input type="number" value="3000" onchange="S.goals[1].target=+this.value||0;render()"></div>
+      <div class="row"><label>Already saved $</label><input type="number" value="0" onchange="S.goals[1].saved=+this.value||0;render()"></div>
+      <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
+      <div class="pulls"><div class="pull">Vehicl <span id="pullFree1_0">(0% max)</span><br>
+        <input type="number" min="0" max="0" step="5" id="pull1_0" value="0" onchange="setPull(1,0,this.value)">%</div><div class="pull">Person <span id="pullFree1_1">(75% max)</span><br>
+        <input type="number" min="0" max="75" step="5" id="pull1_1" value="0" onchange="setPull(1,1,this.value)">%</div><div class="pull">Taxes <span id="pullFree1_2">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull1_2" value="0" onchange="setPull(1,2,this.value)">%</div><div class="pull">Media <span id="pullFree1_3">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull1_3" value="0" onchange="setPull(1,3,this.value)">%</div><div class="pull">Saving <span id="pullFree1_4">(50% max)</span><br>
+        <input type="number" min="0" max="50" step="5" id="pull1_4" value="0" onchange="setPull(1,4,this.value)">%</div></div>
+      <div class="barwrap"><div class="bar" id="goalBar1" style="background: rgb(242, 118, 46); width: 0%;"></div></div>
+      <div class="eta"><span>gets <b id="goalWk1">$0.00</b>/wk</span><span><b id="goalWeeks1">not funded</b></span><span>done <b id="goalDate1">—</b></span></div>
+      <div class="eta" id="goalRaise1" style="color:var(--green)"><span>w/ raise: still not funded — set some pull %</span></div>
+      <div class="hint" id="goalSrc1"></div></div><div class="goal"><div class="head">
+        <input type="text" value="Personal / Skill" onchange="S.goals[2].name=this.value;save()">
+        <button class="danger" onclick="S.goals.splice(2,1);buildStatic();render()">×</button></div>
+      <div class="row"><label>Target $</label><input type="number" value="4000" onchange="S.goals[2].target=+this.value||0;render()"></div>
+      <div class="row"><label>Already saved $</label><input type="number" value="0" onchange="S.goals[2].saved=+this.value||0;render()"></div>
+      <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
+      <div class="pulls"><div class="pull">Vehicl <span id="pullFree2_0">(0% max)</span><br>
+        <input type="number" min="0" max="0" step="5" id="pull2_0" value="0" onchange="setPull(2,0,this.value)">%</div><div class="pull">Person <span id="pullFree2_1">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull2_1" value="25" onchange="setPull(2,1,this.value)">%</div><div class="pull">Taxes <span id="pullFree2_2">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull2_2" value="0" onchange="setPull(2,2,this.value)">%</div><div class="pull">Media <span id="pullFree2_3">(100% max)</span><br>
+        <input type="number" min="0" max="100" step="5" id="pull2_3" value="0" onchange="setPull(2,3,this.value)">%</div><div class="pull">Saving <span id="pullFree2_4">(50% max)</span><br>
+        <input type="number" min="0" max="50" step="5" id="pull2_4" value="0" onchange="setPull(2,4,this.value)">%</div></div>
+      <div class="barwrap"><div class="bar" id="goalBar2" style="background: rgb(167, 139, 250); width: 0%;"></div></div>
+      <div class="eta"><span>gets <b id="goalWk2">$42.50</b>/wk</span><span><b id="goalWeeks2">282.4 wks (65.2 mo)</b></span><span>done <b id="goalDate2">Dec 2031</b></span></div>
+      <div class="eta" id="goalRaise2" style="color:var(--green)"></div>
+      <div class="hint" id="goalSrc2">from: Person $42.50</div></div></div>
+  </div>
+
+  <!-- CHART + DEBT -->
+  <div class="card">
+    <h2>Money Map ($/month)</h2>
+    <canvas id="mapChart" width="543" height="390" style="display: block; box-sizing: border-box; height: 260px; width: 362px;"></canvas>
+  </div>
+  <div class="card">
+    <h2>Debt Snapshot <button onclick="addDebt()">+ add</button></h2>
+    <div class="scroll"><table id="debtTable"><thead><tr><th>Debt</th><th>Balance</th><th>Limit</th><th>Util</th><th>Pay/mo</th><th>Months</th><th></th></tr></thead><tbody><tr><td><input type="text" value="Lending Club" style="width:88px" onchange="S.debts[0][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="16387" onchange="S.debts[0][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="19000" onchange="S.debts[0][2]=+this.value||0;render()"></td>
+      <td id="dUtil0">86%</td>
+      <td><input type="number" style="width:60px" value="525" onchange="S.debts[0][3]=+this.value||0;render()"></td>
+      <td id="dMon0">31.2</td>
+      <td><button class="danger" onclick="S.debts.splice(0,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Capital One" style="width:88px" onchange="S.debts[1][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="9500" onchange="S.debts[1][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="8500" onchange="S.debts[1][2]=+this.value||0;render()"></td>
+      <td id="dUtil1" style="color: var(--red);">112%</td>
+      <td><input type="number" style="width:60px" value="300" onchange="S.debts[1][3]=+this.value||0;render()"></td>
+      <td id="dMon1">31.7</td>
+      <td><button class="danger" onclick="S.debts.splice(1,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Affirm" style="width:88px" onchange="S.debts[2][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="4250" onchange="S.debts[2][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="3600" onchange="S.debts[2][2]=+this.value||0;render()"></td>
+      <td id="dUtil2" style="color: var(--red);">118%</td>
+      <td><input type="number" style="width:60px" value="350" onchange="S.debts[2][3]=+this.value||0;render()"></td>
+      <td id="dMon2">12.1</td>
+      <td><button class="danger" onclick="S.debts.splice(2,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Upgrade (Parts)" style="width:88px" onchange="S.debts[3][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="4500" onchange="S.debts[3][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="4200" onchange="S.debts[3][2]=+this.value||0;render()"></td>
+      <td id="dUtil3" style="color: var(--red);">107%</td>
+      <td><input type="number" style="width:60px" value="250" onchange="S.debts[3][3]=+this.value||0;render()"></td>
+      <td id="dMon3">18.0</td>
+      <td><button class="danger" onclick="S.debts.splice(3,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="Town Fair Tire" style="width:88px" onchange="S.debts[4][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="750" onchange="S.debts[4][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="1000" onchange="S.debts[4][2]=+this.value||0;render()"></td>
+      <td id="dUtil4">75%</td>
+      <td><input type="number" style="width:60px" value="150" onchange="S.debts[4][3]=+this.value||0;render()"></td>
+      <td id="dMon4">5.0</td>
+      <td><button class="danger" onclick="S.debts.splice(4,1);buildStatic();render()">×</button></td></tr><tr><td><input type="text" value="PayPal Credit" style="width:88px" onchange="S.debts[5][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="10" onchange="S.debts[5][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="800" onchange="S.debts[5][2]=+this.value||0;render()"></td>
+      <td id="dUtil5" style="color: var(--green);">1%</td>
+      <td><input type="number" style="width:60px" value="10" onchange="S.debts[5][3]=+this.value||0;render()"></td>
+      <td id="dMon5">1.0</td>
+      <td><button class="danger" onclick="S.debts.splice(5,1);buildStatic();render()">×</button></td></tr></tbody></table></div>
+    <div class="stat"><span>Total debt</span><b id="debtTotal">$35,397</b></div>
+    <div class="stat"><span>Overall utilization</span><b id="debtUtil">95.4%</b></div>
+    <div class="stat"><span>Months to debt-free*</span><b id="debtMonths">22.3 mo</b></div>
+    <div class="hint">*balance ÷ payment, interest not included — a floor, not a promise.</div>
+  </div>
+
+</div>
+
+<script id="savedState" type="application/json">{"v":5,"ts":1783743092522,"title":"Tyler's Budget Planner","bucketNames":["Vehicle Maint.","Personal / Fun","Taxes (CPA)","Media","Savings"],"rate":35,"hours":40,"sideRate":0,"sideHours":0,"ded":23.9,"bills":[["Rent",1600],["Electric",0],["Heat",0],["Internet",96],["Food",50],["Home Health",100]],"recurring":[["Netflix",28.5],["Spotify",18.99],["Amazon Prime",7.99],["E-Z Pass",15],["Car Wash",40],["Gym",25],["Pay Pal",50]],"alloc":[170,170,20,40,195],"newRate":70,"extraHours":0,"wSideHours":0,"wSideRate":0,"raiseAlloc":[365,0,0,0,0],"reserveTarget":[0,0,0,0,0],"reserveBal":[0,0,0,0,0],"goals":[{"name":"Vehicle ($35k)","target":15000,"saved":0,"pulls":[100,0,0,0,50]},{"name":"Home / Moving","target":3000,"saved":0,"pulls":[0,0,0,0,0]},{"name":"Computer/ Office","target":12000,"saved":0,"pulls":[0,25,0,0,0]}],"debts":[["Lending Club",16387,19000,525],["Capital One",9500,8500,300],["Affirm",4250,3600,350],["Upgrade (Parts)",4500,4200,250],["Town Fair Tire",750,1000,150],["PayPal Credit",10,800,10]]}</script>
+<script>
+const VERSION = 5;
+let BUCKET_NAMES = ["Vehicle Maint.","Personal / Fun","Taxes (CPA)","Media","Savings"];
+let BUCKET_SHORT = ["Veh","Fun","Tax","Media","Sav"];
+const BUCKET_COLORS = ["#5b9bff","#f2762e","#a78bfa","#ffc94d","#3ddc84"];
+const DEFAULTS = {
+  v:VERSION, ts:0,
+  title:"Tyler's Budget Planner",
+  bucketNames:["Vehicle Maint.","Personal / Fun","Taxes (CPA)","Media","Savings"],
+  rate:70, hours:40, sideRate:0, sideHours:30, ded:23.9,
+  bills:[["Rent",1600],["Electric",0],["Heat",0],["Internet",96],["Food",50],["Home Health",100]],
+  recurring:[["Netflix",28.50],["Spotify",18.99],["Amazon Prime",7.99],["E-Z Pass",15],["Car Wash",40],["Gym",25],
+             ["Lending Club pmt",525],["Capital One pmt",300],["Affirm pmt",350],["Upgrade pmt",250],["Town Fair pmt",150],["PayPal pmt",10]],
+  alloc:[165,150,20,40,932.77],
+  newRate:75, extraHours:0, wSideHours:0, wSideRate:0,
+  raiseAlloc:[0,0,0,0,0],
+  reserveTarget:[2000,0,0,0,0], reserveBal:[0,0,0,0,0],
+  goals:[
+    {name:"Emergency Fund (3 mo)",target:4500,saved:0,pulls:[0,0,0,0,50]},
+    {name:"Vehicle ($35k)",target:35000,saved:0,pulls:[100,0,0,0,50]},
+    {name:"Home / Moving",target:3000,saved:0,pulls:[0,0,0,0,0]},
+    {name:"Personal / Skill",target:4000,saved:0,pulls:[0,25,0,0,0]}
+  ],
+  debts:[["Lending Club",16387,19000,525],["Capital One",9500,8500,300],["Affirm",4250,3600,350],
+         ["Upgrade (Parts)",4500,4200,250],["Town Fair Tire",750,1000,150],["PayPal Credit",10,800,10]]
+};
+function load(){
+  // newest wins between the state baked into this file (Save As) and this device's autosave
+  let emb=null, loc=null;
+  try{ emb = JSON.parse(document.getElementById("savedState").textContent); }catch(e){}
+  try{ const s = localStorage.getItem("tylerBudget"); if(s) loc = JSON.parse(s); }catch(e){}
+  const pick = [emb,loc].filter(p=>p && p.v===VERSION).sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+  return pick ? JSON.parse(JSON.stringify(pick)) : JSON.parse(JSON.stringify(DEFAULTS));
+}
+function save(){ S.ts = Date.now(); try{ localStorage.setItem("tylerBudget", JSON.stringify(S)); }catch(e){} }
+function refreshNames(){
+  BUCKET_NAMES = S.bucketNames;
+  BUCKET_SHORT = S.bucketNames.map(n=>(n.trim().split(/[\s\/]+/)[0]||"?").slice(0,6));
+}
+function applyTitle(){
+  const t = $("docTitle");
+  t.textContent = S.title || "Budget Planner";
+  document.title = S.title || "Budget Planner";
+}
+function renameBucket(i, name){
+  S.bucketNames[i] = name.trim() || S.bucketNames[i];
+  refreshNames(); buildStatic(); render();
+}
+function resetAll(){ if(confirm("Reset everything to the built-in defaults? (Great for handing someone a fresh template)")){ S = JSON.parse(JSON.stringify(DEFAULTS)); refreshNames(); applyTitle(); buildStatic(); render(); } }
+// download a complete copy of this planner with the current data baked in —
+// save it to OneDrive and open it on any device; it carries your numbers with it
+function saveAs(){
+  save();
+  const doc = document.documentElement.cloneNode(true);
+  const st = doc.querySelector("#savedState");
+  st.textContent = JSON.stringify(S).replace(/</g,"\\u003c");
+  const blob = new Blob(["<!DOCTYPE html>\n"+doc.outerHTML], {type:"text/html"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = ((S.title||"Budget Planner").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_")||"Budget_Planner")+".html";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+let S = load();
+
+const $ = id => document.getElementById(id);
+const money = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const money0 = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString(undefined,{maximumFractionDigits:0});
+
+// ---- math ----
+function calc(){
+  const keep = 1 - S.ded/100;
+  const grossWeekly = S.rate*S.hours + S.sideRate*S.sideHours;
+  const netWeekly = grossWeekly*keep;
+  const billsMo = S.bills.reduce((a,b)=>a+(+b[1]||0),0);
+  const recurMo = S.recurring.reduce((a,b)=>a+(+b[1]||0),0);
+  const outMo = billsMo + recurMo;
+  const outWk = outMo*12/52;
+  const basePoints = netWeekly - outWk;
+  const newGross = S.newRate*(S.hours+S.extraHours) + S.wSideHours*S.wSideRate + S.sideRate*S.sideHours;
+  const newNet = newGross*keep;
+  const gained = Math.max(0, newNet - netWeekly);
+  const withRaise = $("applyRaise").checked;
+  const points = withRaise ? basePoints + gained : basePoints;
+  const buckets = S.alloc.map((v,i)=> withRaise ? (+v||0)+(+S.raiseAlloc[i]||0) : (+v||0));
+  const allocTotal = buckets.reduce((a,b)=>a+b,0);
+  return {grossWeekly, netWeekly, billsMo, recurMo, outMo, outWk, basePoints, newGross, newNet, gained, points, buckets, allocTotal, withRaise};
+}
+
+// clamped setters — never allow allocating more than what's available
+function setAlloc(i, val){
+  const c = calc();
+  const rem = c.points - c.allocTotal;            // what's still unspent right now
+  const cap = Math.max(0, (+S.alloc[i]||0) + rem); // own current value + leftover
+  S.alloc[i] = Math.round(Math.max(0, Math.min(val, cap))*100)/100;
+  render();
+}
+function setRaiseAlloc(i, val){
+  const c = calc();
+  const spent = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
+  const cap = Math.max(0, (+S.raiseAlloc[i]||0) + (c.gained - spent));
+  S.raiseAlloc[i] = Math.round(Math.max(0, Math.min(val, cap))*100)/100;
+  render();
+}
+// pulls share one 100% pool per bucket across ALL goals
+function setPull(gi, bi, val){
+  const others = S.goals.reduce((a,g,j)=> j===gi ? a : a + (+g.pulls[bi]||0), 0);
+  S.goals[gi].pulls[bi] = Math.max(0, Math.min(+val||0, 100 - others));
+  render();
+}
+// log a spend against a bucket's reserve (refill restarts automatically)
+function spendReserve(i){
+  const amt = parseFloat(prompt("Spend how much from the "+BUCKET_NAMES[i]+" reserve?")) || 0;
+  if(amt>0){ S.reserveBal[i] = Math.max(0, (+S.reserveBal[i]||0) - amt); render(); }
+}
+// time to reach `remain` given contributions that each start after a delay (weeks)
+function solveWeeks(pairs, remain){
+  if(remain<=0) return 0;
+  const ps = pairs.filter(p=>p.c>0.0001 && isFinite(p.d)).sort((a,b)=>a.d-b.d);
+  if(!ps.length) return Infinity;
+  let rate=0, t=0, acc=0, k=0;
+  while(k<ps.length){
+    const next=ps[k].d;
+    if(next>t && rate>0){
+      const add=rate*(next-t);
+      if(acc+add>=remain) return t+(remain-acc)/rate;
+      acc+=add;
+    }
+    t=Math.max(t,next); rate+=ps[k].c; k++;
+  }
+  return t+(remain-acc)/rate;
+}
+
+// ---- static builders ----
+function listTable(key, tableId){
+  const tb = $(tableId).querySelector("tbody"); tb.innerHTML = "";
+  S[key].forEach((b,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><input type="text" value="${b[0]}" onchange="S.${key}[${i}][0]=this.value;save()"></td>
+      <td><input type="number" value="${b[1]}" step="0.01" onchange="S.${key}[${i}][1]=+this.value||0;render()"></td>
+      <td><button class="danger" onclick="S.${key}.splice(${i},1);buildStatic();render()">×</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+function buildStatic(){
+  listTable("bills","billsTable");
+  listTable("recurring","recurringTable");
+  // buckets (base + raise)
+  [["buckets","setAlloc"],["raiseBuckets","setRaiseAlloc"]].forEach(([zone,setter])=>{
+    const el = $(zone); el.innerHTML = "";
+    BUCKET_NAMES.forEach((n,i)=>{
+      const d = document.createElement("div"); d.className="bucket";
+      d.innerHTML = `<div class="top"><span>${n}</span><b id="${zone}Val${i}"></b></div>
+        <div class="barwrap"><div class="bar" id="${zone}Bar${i}" style="background:${BUCKET_COLORS[i]}"></div></div>
+        <div class="ctrl"><input type="range" min="0" max="1500" step="5" id="${zone}Rng${i}"
+          oninput="${setter}(${i},+this.value)">
+        <input type="number" step="5" style="width:90px" id="${zone}Num${i}"
+          onchange="${setter}(${i},+this.value||0)"></div>`;
+      el.appendChild(d);
+    });
+  });
+  // goals
+  const g = $("goals"); g.innerHTML = "";
+  S.goals.forEach((goal,gi)=>{
+    const d = document.createElement("div"); d.className="goal";
+    d.innerHTML = `<div class="head">
+        <input type="text" value="${goal.name}" onchange="S.goals[${gi}].name=this.value;save()">
+        <button class="danger" onclick="S.goals.splice(${gi},1);buildStatic();render()">×</button></div>
+      <div class="row"><label>Target $</label><input type="number" value="${goal.target}" onchange="S.goals[${gi}].target=+this.value||0;render()"></div>
+      <div class="row"><label>Already saved $</label><input type="number" value="${goal.saved}" onchange="S.goals[${gi}].saved=+this.value||0;render()"></div>
+      <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
+      <div class="pulls">${BUCKET_SHORT.map((n,bi)=>`<div class="pull">${n} <span id="pullFree${gi}_${bi}"></span><br>
+        <input type="number" min="0" max="100" step="5" id="pull${gi}_${bi}" value="${goal.pulls[bi]}" onchange="setPull(${gi},${bi},this.value)">%</div>`).join("")}</div>
+      <div class="barwrap"><div class="bar" id="goalBar${gi}" style="background:${BUCKET_COLORS[gi%5]}"></div></div>
+      <div class="eta"><span>gets <b id="goalWk${gi}"></b>/wk</span><span><b id="goalWeeks${gi}"></b></span><span>done <b id="goalDate${gi}"></b></span></div>
+      <div class="eta" id="goalRaise${gi}" style="color:var(--green)"></div>
+      <div class="hint" id="goalSrc${gi}"></div>`;
+    g.appendChild(d);
+  });
+  // bucket summary rows (reserve controls live here; dynamic cells updated in render)
+  const bsb = $("bucketSummary").querySelector("tbody"); bsb.innerHTML = "";
+  BUCKET_NAMES.forEach((n,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><input type="text" style="width:112px" value="${n}" title="rename this bucket" onchange="renameBucket(${i},this.value)"></td><td id="resWk${i}"></td>
+      <td><input type="number" min="0" step="50" style="width:78px" id="resT${i}" value="${S.reserveTarget[i]}" onchange="S.reserveTarget[${i}]=+this.value||0;render()"></td>
+      <td><input type="number" min="0" step="10" style="width:78px" id="resB${i}" value="${S.reserveBal[i]}" onchange="S.reserveBal[${i}]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(${i})">−</button></td>
+      <td id="resStatus${i}" style="text-align:left"></td>
+      <td id="resGoals${i}"></td><td id="resLeft${i}"></td>
+      <td><div class="barwrap"><div class="bar" id="resBar${i}" style="background:${BUCKET_COLORS[i]}"></div></div></td>`;
+    bsb.appendChild(tr);
+  });
+  // debts
+  const dtb = $("debtTable").querySelector("tbody"); dtb.innerHTML = "";
+  S.debts.forEach((dt,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><input type="text" value="${dt[0]}" style="width:88px" onchange="S.debts[${i}][0]=this.value;save()"></td>
+      <td><input type="number" style="width:68px" value="${dt[1]}" onchange="S.debts[${i}][1]=+this.value||0;render()"></td>
+      <td><input type="number" style="width:68px" value="${dt[2]}" onchange="S.debts[${i}][2]=+this.value||0;render()"></td>
+      <td id="dUtil${i}"></td>
+      <td><input type="number" style="width:60px" value="${dt[3]}" onchange="S.debts[${i}][3]=+this.value||0;render()"></td>
+      <td id="dMon${i}"></td>
+      <td><button class="danger" onclick="S.debts.splice(${i},1);buildStatic();render()">×</button></td>`;
+    dtb.appendChild(tr);
+  });
+  // income + raise inputs
+  ["rate","hours","sideRate","sideHours","ded","newRate","extraHours","wSideHours","wSideRate"]
+   .forEach(key=>{ $(key).value = S[key]; $(key).onchange = e=>{ S[key]=+e.target.value||0; render(); }; });
+}
+function addRow(key){ S[key].push(["New item",0]); buildStatic(); render(); }
+function addGoal(){ S.goals.push({name:"New goal",target:1000,saved:0,pulls:[0,0,0,0,0]}); buildStatic(); render(); }
+function addDebt(){ S.debts.push(["New debt",0,0,0]); buildStatic(); render(); }
+
+// ---- render ----
+let chart;
+function render(){
+  const c = calc();
+  $("grossWeekly").textContent = money(c.grossWeekly);
+  $("grossMonthly").textContent = money(c.grossWeekly*52/12);
+  $("netWeekly").textContent = money(c.netWeekly);
+  $("netMonthly").textContent = money(c.netWeekly*52/12);
+  $("billsTotal").textContent = money(c.billsMo);
+  $("recurringTotal").textContent = money(c.recurMo);
+  $("recurringFree").textContent = money(c.recurMo) + "/mo";
+  $("pointsBox").textContent = money(c.points) + " / wk";
+  $("pointsBox").className = "big " + (c.points>=0?"pts-ok":"pts-over");
+
+  BUCKET_NAMES.forEach((n,i)=>{
+    const v = c.buckets[i];
+    $("bucketsVal"+i).textContent = money(v);
+    $("bucketsBar"+i).style.width = Math.min(100, c.points>0 ? v/c.points*100 : 0)+"%";
+    const rem = c.points - c.allocTotal;
+    const cap = Math.max(0,(+S.alloc[i]||0)+rem);
+    const rng = $("bucketsRng"+i);
+    rng.max = Math.max(5, Math.ceil(cap/5)*5);
+    rng.value = S.alloc[i];
+    $("bucketsNum"+i).value = (+S.alloc[i]).toFixed(2);
+    // raise widgets
+    const rv = +S.raiseAlloc[i]||0;
+    const rSpent = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
+    const rCap = Math.max(0, rv + (c.gained - rSpent));
+    $("raiseBucketsVal"+i).textContent = money(rv);
+    $("raiseBucketsBar"+i).style.width = Math.min(100, c.gained>0 ? rv/c.gained*100 : 0)+"%";
+    const rrng = $("raiseBucketsRng"+i);
+    rrng.max = Math.max(5, Math.ceil(rCap/5)*5);
+    rrng.value = rv;
+    $("raiseBucketsNum"+i).value = rv.toFixed(2);
+  });
+  $("allocTotal").textContent = money(c.allocTotal);
+  const rem = c.points - c.allocTotal;
+  $("remainBox").textContent = "Remaining: " + money(rem);
+  $("remainBox").className = "big " + (Math.abs(rem)<0.01 ? "pts-ok" : rem<0 ? "pts-over" : "pts-left");
+
+  // raise
+  $("wGross").textContent = money(c.newGross);
+  $("wGrossMo").textContent = money(c.newGross*52/12);
+  $("wNet").textContent = money(c.newNet);
+  $("wNetMo").textContent = money(c.newNet*52/12);
+  $("gainBox").textContent = "New points: +" + money(c.gained) + " / wk";
+  $("gainBox").className = "big " + (c.gained>0?"pts-ok":"pts-left");
+  const rSpent = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
+  const rRem = c.gained - rSpent;
+  $("raiseRemainBox").textContent = "New points remaining: " + money(rRem);
+  $("raiseRemainBox").className = "big " + (Math.abs(rRem)<0.01 ? "pts-ok" : rRem<0 ? "pts-over" : "pts-left");
+
+  // goals — pooled: all goals share one 100% pool per bucket
+  const committed = [0,0,0,0,0];
+  // what-if buckets: use panel 5's split of the new points if any; otherwise auto-split
+  // the raise proportionally to the current allocation so the what-if always works
+  const rSpentG = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
+  const baseTotal = S.alloc.reduce((a,b)=>a+(+b||0),0);
+  const mergedBuckets = S.alloc.map((v,i)=>{
+    const extra = rSpentG>0.005 ? (+S.raiseAlloc[i]||0)
+                : baseTotal>0 ? c.gained*(+v||0)/baseTotal
+                : (i===4 ? c.gained : 0);
+    return (+v||0)+extra;
+  });
+  const note = $("goalRaiseNote");
+  if(c.withRaise) note.textContent = "Raise is included in the main numbers above (panel 4 toggle is on).";
+  else if(c.gained<=0.005) note.textContent = "";
+  else if(rSpentG>0.005) note.textContent = `What-if lines use your panel 5 split of the +${money(c.gained)}/wk raise.`;
+  else note.textContent = `What-if lines auto-split the +${money(c.gained)}/wk raise proportionally across your buckets — allocate it yourself in panel 5 to take control.`;
+  S.goals.forEach(g=> g.pulls.forEach((p,bi)=>{ committed[bi] += Math.max(0,Math.min(100,+p||0)); }));
+  // reserves: weeks until each bucket's reserve is full (0 = full / no reserve)
+  const resT = S.reserveTarget, resB = S.reserveBal;
+  const delay = c.buckets.map((w,i)=> resT[i]>0 && resB[i]<resT[i] ? (w>0 ? (resT[i]-resB[i])/w : Infinity) : 0);
+  const delayR = mergedBuckets.map((w,i)=> resT[i]>0 && resB[i]<resT[i] ? (w>0 ? (resT[i]-resB[i])/w : Infinity) : 0);
+  S.goals.forEach((g,gi)=>{
+    let wk = 0, wkRaise = 0; const src = [], pairs = [], pairsR = [];
+    g.pulls.forEach((p,bi)=>{
+      p = Math.max(0,Math.min(100,+p||0));
+      const rate = c.buckets[bi]*p/100, rateR = mergedBuckets[bi]*p/100;
+      wk += rate; wkRaise += rateR;
+      if(rate>0.005){ src.push(`${BUCKET_SHORT[bi]} ${money(rate)}`); pairs.push({c:rate,d:delay[bi]}); }
+      if(rateR>0.005) pairsR.push({c:rateR,d:delayR[bi]});
+      const inp = $("pull"+gi+"_"+bi);
+      if(inp){
+        const free = Math.max(0, 100 - committed[bi] + p);
+        inp.max = free;
+        if(document.activeElement!==inp) inp.value = p;
+        const fl = $("pullFree"+gi+"_"+bi);
+        if(fl) fl.textContent = "("+Math.round(free)+"% max)";
+      }
+    });
+    const remain = Math.max(0, g.target-g.saved);
+    const weeks = solveWeeks(pairs, remain);
+    $("goalWk"+gi).textContent = money(wk);
+    $("goalWeeks"+gi).textContent = isFinite(weeks) ? weeks.toFixed(1)+" wks ("+(weeks/4.333).toFixed(1)+" mo)" : "not funded";
+    $("goalDate"+gi).textContent = isFinite(weeks) ? new Date(Date.now()+weeks*6.048e8).toLocaleDateString(undefined,{month:"short",year:"numeric"}) : "—";
+    $("goalBar"+gi).style.width = Math.min(100, g.target>0 ? g.saved/g.target*100 : 0)+"%";
+    const waits = g.pulls.map((p,bi)=> (+p>0 && delay[bi]>0.05) ? BUCKET_SHORT[bi]+" "+(isFinite(delay[bi])?delay[bi].toFixed(1)+"w":"∞") : null).filter(Boolean);
+    $("goalSrc"+gi).textContent = (src.length ? "from: "+src.join(" · ") : "") + (waits.length ? "  ·  waits on reserve: "+waits.join(", ") : "");
+    // what-if: same pulls, but with the raise money allocated in panel 5 included
+    const el = $("goalRaise"+gi);
+    const weeksR = solveWeeks(pairsR, remain);
+    if(!c.withRaise && c.gained>0.005 && isFinite(weeksR) && (!isFinite(weeks) || weeksR < weeks-0.05)){
+      el.innerHTML = `<span>w/ raise: <b>${money(wkRaise)}</b>/wk</span><span><b>${weeksR.toFixed(1)} wks (${(weeksR/4.333).toFixed(1)} mo)</b></span><span>done <b>${new Date(Date.now()+weeksR*6.048e8).toLocaleDateString(undefined,{month:"short",year:"numeric"})}</b></span>`;
+    } else if(!c.withRaise && c.gained>0.005 && !isFinite(weeksR)){
+      el.innerHTML = `<span>w/ raise: still not funded — set some pull %</span>`;
+    } else el.innerHTML = "";
+  });
+  // bucket summary: weekly / reserve / to goals / left
+  BUCKET_NAMES.forEach((n,i)=>{
+    const pctC = Math.min(100, committed[i]);
+    const refilling = resT[i]>0 && resB[i]<resT[i];
+    const overflow = refilling ? 0 : c.buckets[i];
+    const toGoals = overflow*pctC/100;
+    const leftV = overflow-toGoals;
+    $("resWk"+i).textContent = money(c.buckets[i]);
+    if(document.activeElement!==$("resT"+i)) $("resT"+i).value = resT[i];
+    if(document.activeElement!==$("resB"+i)) $("resB"+i).value = resB[i];
+    $("resStatus"+i).textContent = resT[i]>0 ? (refilling ? "refilling · "+(isFinite(delay[i])?delay[i].toFixed(1)+" wks to full":"no inflow") : "full ✓ overflowing") : "—";
+    $("resStatus"+i).style.color = resT[i]>0 ? (refilling ? "var(--amber)" : "var(--green)") : "var(--muted)";
+    $("resGoals"+i).textContent = money(toGoals)+" ("+Math.round(pctC)+"%)";
+    $("resLeft"+i).innerHTML = `<b style="color:${leftV>0.005?"var(--green)":"var(--muted)"}">${money(leftV)}</b>`;
+    $("resBar"+i).style.width = (resT[i]>0 ? Math.min(100, resB[i]/resT[i]*100) : (c.buckets[i]>0 ? leftV/c.buckets[i]*100 : 0))+"%";
+    $("resBar"+i).title = resT[i]>0 ? "reserve fill" : "left over";
+  });
+
+  // debts
+  let dB=0,dL=0,dP=0;
+  S.debts.forEach((d,i)=>{
+    dB+=d[1]; dL+=d[2]; dP+=d[3];
+    $("dUtil"+i).textContent = d[2]>0 ? (d[1]/d[2]*100).toFixed(0)+"%" : "—";
+    $("dUtil"+i).style.color = d[2]>0 && d[1]/d[2]>0.9 ? "var(--red)" : d[2]>0 && d[1]/d[2]<0.3 ? "var(--green)" : "";
+    $("dMon"+i).textContent = d[3]>0 ? (d[1]/d[3]).toFixed(1) : "—";
+  });
+  $("debtTotal").textContent = money0(dB);
+  $("debtUtil").textContent = dL>0 ? (dB/dL*100).toFixed(1)+"%" : "—";
+  $("debtMonths").textContent = dP>0 ? (dB/dP).toFixed(1)+" mo" : "—";
+
+  // chart
+  const labels = ["Bills (fixed)","Recurring", ...BUCKET_NAMES];
+  const data = [c.billsMo, c.recurMo, ...c.buckets.map(v=>v*52/12)];
+  if(!chart){
+    chart = new Chart($("mapChart"), {type:"doughnut",
+      data:{labels, datasets:[{data, backgroundColor:["#666f8d","#8d6a66",...BUCKET_COLORS], borderColor:"#242836", borderWidth:2}]},
+      options:{plugins:{legend:{position:"right",labels:{color:"#e8eaf2",font:{size:11}}}}}});
+  } else { chart.data.labels = labels; chart.data.datasets[0].data = data; chart.update(); }
+  save();
+}
+$("applyRaise").onchange = render;
+$("docTitle").onblur = ()=>{ S.title = $("docTitle").textContent.trim() || "Budget Planner"; document.title = S.title; save(); };
+$("docTitle").onkeydown = e=>{ if(e.key==="Enter"){ e.preventDefault(); e.target.blur(); } };
+refreshNames();
+applyTitle();
+buildStatic();
+render();
+</script>
+
+
+</body></html>
