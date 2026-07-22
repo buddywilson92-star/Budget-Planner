@@ -15,7 +15,7 @@
   h1{color:var(--orange);font-size:26px;margin-bottom:2px}
   h1[contenteditable]:hover,h1[contenteditable]:focus{outline:1px dashed var(--orange);outline-offset:4px;border-radius:4px;cursor:text}
   .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:14px}
   .card{background:var(--panel);border-radius:12px;padding:16px;border:1px solid #333a52}
   .card h2{font-size:15px;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
   .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0}
@@ -55,15 +55,57 @@
   .tag{font-size:11px;background:var(--panel2);color:var(--muted);border-radius:20px;padding:2px 10px}
   .full{grid-column:1/-1}
   canvas{max-height:260px}
-  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px}
+  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap}
+  /* phones: fluid name inputs so the fixed-width tables never force sideways scroll */
+  table input[type=text]{width:100%;min-width:80px}
+  @media (max-width:430px){
+    body{padding:10px}
+    input[type=number]{width:88px}
+    input[type=number],input[type=text]{font-size:16px} /* 16px stops iOS auto-zoom on focus */
+    .timeline li .when{display:block;min-width:0}
+  }
+  @media (pointer:coarse){ /* finger-sized targets so a flip tap can't mis-hit reorder */
+    button.ord{padding:7px 11px;font-size:12px}
+    button.flipbtn{padding:7px 11px}
+  }
   .switch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
   .hint{font-size:12px;color:var(--muted);font-style:italic;margin:4px 0}
-  .goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:10px}
+  .goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px;margin-top:10px}
+  /* goal card flip (works with tap or click — no hover needed) */
+  .goalwrap{perspective:1200px;min-width:0}
+  .flip{display:grid;transition:transform .5s;transform-style:preserve-3d;position:relative}
+  .flip .face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;min-width:0}
+  .flip .face.back{transform:rotateY(180deg)}
+  .flip.flipped{transform:rotateY(180deg)}
+  .flip{height:100%}
+  /* the hidden face is lifted out of the flow (card hugs its visible side) and made
+     invisible to keyboard-tab and screen readers once the turn is half done */
+  .flip .face{visibility:visible;transition:visibility 0s}
+  .flip:not(.flipped) .face.back{pointer-events:none;position:absolute;top:0;left:0;right:0;visibility:hidden;transition:visibility 0s .25s}
+  .flip.flipped .face.front{pointer-events:none;position:absolute;top:0;left:0;right:0;visibility:hidden;transition:visibility 0s .25s}
+  .prio{background:var(--orange);color:#fff;border-radius:20px;font-size:11px;padding:2px 8px;font-weight:700;white-space:nowrap}
+  .goal .head .gname{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  button.ord{background:transparent;border:1px solid #3a4059;color:var(--muted);padding:1px 7px;font-size:11px}
+  button.ord:disabled{opacity:.25;cursor:default}
+  button.flipbtn{background:transparent;border:1px solid var(--orange);color:var(--orange);padding:2px 8px}
+  tr.paused input[type=text],tr.paused input[type=number]{text-decoration:line-through;color:var(--muted)}
+  /* plan timeline */
+  .timeline{list-style:none;margin:8px 0 0;padding:0}
+  .timeline li{position:relative;padding:5px 0 5px 26px;font-size:13px;color:var(--muted)}
+  .timeline li::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:2px;background:var(--bar)}
+  .timeline li:first-child::before{top:12px}
+  .timeline li:last-child::before{bottom:auto;height:12px}
+  .timeline li::after{content:"";position:absolute;left:1px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--panel2);border:2px solid var(--muted)}
+  .timeline li.tl-goal::after{border-color:var(--green);background:var(--green)}
+  .timeline li.tl-res::after{border-color:var(--amber)}
+  .timeline li.tl-spill::after{border-color:var(--blue)}
+  .timeline li b{color:var(--ink)}
+  .timeline li .when{display:inline-block;min-width:130px;color:var(--ink);font-weight:600}
 </style>
 </head>
 <body>
 <h1 id="docTitle" contenteditable="true" spellcheck="false" title="Click to rename — handy when making a copy for someone else">Budget Planner</h1>
-<div class="sub">Weekly surplus = your attribute points. Spend every point. Plan raises. Aim goals at any bucket. Click the title or any bucket name to rename.</div>
+<div class="sub">Weekly surplus = your attribute points. Spend every point. Plan raises. Goals fund in priority order and spill over automatically when one finishes. Click the title or any bucket name to rename.</div>
 <div class="toolbar">
   <button onclick="saveAs()">Save As — download copy</button>
   <button class="ghost" onclick="resetAll()">Reset to defaults</button>
@@ -79,7 +121,8 @@
     <div class="row"><label>Hours / week</label><input type="number" id="hours"></div>
     <div class="row"><label>Side rate ($/hr)</label><input type="number" id="sideRate" step="0.5"></div>
     <div class="row"><label>Side hours / week</label><input type="number" id="sideHours"></div>
-    <div class="row"><label>Tax / deduction %</label><input type="number" id="ded" step="0.1"></div>
+    <div class="row"><label>Tax / deduction %</label><span style="display:flex;align-items:center;gap:6px"><span class="switch"><input type="checkbox" id="dedAuto"><label for="dedAuto">auto</label></span><input type="number" id="ded" step="0.1"></span></div>
+    <div class="hint">auto = rough US federal estimate (2026 single-filer brackets + FICA) from the pay above — just type a % to take over and fine-tune for your state / situation.</div>
     <div class="stat"><span>Gross weekly pay</span><b id="grossWeekly">—</b></div>
     <div class="stat"><span>Gross monthly pay</span><b id="grossMonthly">—</b></div>
     <div class="stat"><span>Net weekly pay</span><b id="netWeekly">—</b></div>
@@ -90,17 +133,18 @@
   <div class="card">
     <h2>2 · Bills — fixed <button onclick="addRow('bills')">+ add</button></h2>
     <div class="hint">Long-term commitments: rent/mortgage, utilities, essentials. These don't go away easily.</div>
-    <table id="billsTable"><thead><tr><th>Bill</th><th>$/month</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="scroll"><table id="billsTable"><thead><tr><th>Bill</th><th>$/month</th><th></th></tr></thead><tbody></tbody></table></div>
     <div class="stat"><span>Fixed bills total</span><b id="billsTotal">—</b></div>
   </div>
 
   <!-- 3 RECURRING -->
   <div class="card">
     <h2>3 · Recurring — removable <button onclick="addRow('recurring')">+ add</button></h2>
-    <div class="hint">Subscriptions &amp; debt payments. Anything here can be cancelled or paid off — your cut-to-save list.</div>
-    <table id="recurringTable"><thead><tr><th>Item</th><th>$/month</th><th></th></tr></thead><tbody></tbody></table>
-    <div class="stat"><span>Recurring total</span><b id="recurringTotal">—</b></div>
+    <div class="hint">Subscriptions &amp; debt payments. Anything here can be cancelled or paid off — your cut-to-save list. Untick a row to <b style="color:var(--ink)">simulate</b> cancelling it: points, goals and the timeline update instantly, nothing is deleted.</div>
+    <div class="scroll"><table id="recurringTable"><thead><tr><th>Item</th><th>$/month</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="stat"><span>Recurring total (ticked only)</span><b id="recurringTotal">—</b></div>
     <div class="stat"><span>If you cleared this whole list you'd free up</span><b id="recurringFree" class="pts-ok">—</b></div>
+    <div class="stat"><span>Unticked (simulated cuts) — already added to your points</span><b id="recurringPaused" class="pts-ok">—</b></div>
   </div>
 
   <!-- 4 POINTS -->
@@ -134,13 +178,20 @@
   <!-- 6 GOALS -->
   <div class="card full">
     <h2>6 · Goal Planner <button onclick="addGoal()">+ add goal</button></h2>
-    <div class="hint">All goals share one 100% pool per bucket — if one goal takes 75% of Vehicle, every other goal can only take up to the remaining 25%. Inputs stop at what's available. <b style="color:var(--ink)">Reserves:</b> give a bucket a Reserve $ target and its weekly money refills that stash FIRST — goals only see the overflow once it's full. Hit "−" to log a spend from a reserve; refilling restarts and goal timelines adjust.</div>
+    <div class="hint">Goals fund in <b style="color:var(--ink)">priority order</b> — #1 is first in line. Use ▲▼ to re-rank, tap ⚙ to flip a card over for its settings (target, saved, pull %). All goals share one 100% pool per bucket — inputs stop at what's available. When a goal completes, its pull % <b style="color:var(--ink)">spills over</b> to the next goal in line automatically, so you never re-juggle percentages. <b style="color:var(--ink)">Reserves:</b> give a bucket a Reserve $ target and its weekly money refills that stash FIRST — goals only see the overflow once it's full. Hit "−" to log a spend from a reserve; refilling restarts and every timeline adjusts.</div>
     <div class="hint" id="goalRaiseNote" style="color:var(--green);font-style:normal"></div>
     <div class="scroll"><table id="bucketSummary" style="margin:10px 0">
       <thead><tr><th>Bucket</th><th>Weekly $</th><th>Reserve $</th><th>Balance</th><th>Status</th><th>→ Goals</th><th>Left over</th><th style="width:18%"></th></tr></thead>
       <tbody></tbody>
     </table></div>
     <div class="goalgrid" id="goals"></div>
+  </div>
+
+  <!-- 7 TIMELINE -->
+  <div class="card full">
+    <h2>7 · Plan Timeline — what happens when</h2>
+    <div class="hint">Your whole plan in order: reserves filling, goals finishing, money spilling to the next priority, and what frees up at the end. Change anything above and this re-plans instantly — no manual re-juggling.</div>
+    <ol class="timeline" id="timeline"></ol>
   </div>
 
   <!-- CHART + DEBT -->
@@ -161,7 +212,7 @@
 
 <script id="savedState" type="application/json"></script>
 <script>
-const VERSION = 6;
+const VERSION = 7;
 let BUCKET_NAMES = ["Vehicle","Personal / Fun","Taxes","Media","Savings"];
 let BUCKET_SHORT = ["Veh","Fun","Tax","Media","Sav"];
 const BUCKET_COLORS = ["#5b9bff","#f2762e","#a78bfa","#ffc94d","#3ddc84","#ff5c9d","#4dd0e1","#c0ca33"];
@@ -171,7 +222,7 @@ const DEFAULTS = {
   v:VERSION, ts:0,
   title:"Budget Planner",
   bucketNames:["Vehicle","Personal / Fun","Taxes","Media","Savings"],
-  rate:20, hours:40, sideRate:0, sideHours:0, ded:20,
+  rate:20, hours:40, sideRate:0, sideHours:0, ded:20, dedAuto:true, dedManual:null,
   bills:[["Rent / Mortgage",0],["Electric",0],["Heat",0],["Internet",0],["Food",0]],
   recurring:[["Streaming",0],["Music",0],["Phone",0],["Gym",0]],
   alloc:[0,0,0,0,0],
@@ -193,12 +244,20 @@ function normalize(st){
   (st.goals||[]).forEach(g=> g.pulls = fit(g.pulls));
   return st;
 }
+// bring older saves forward instead of throwing them away
+function migrate(st){
+  if(!st || typeof st!=="object") return null;
+  if(st.v===6){ st.v=7; st.dedAuto=false; } // v6 users typed their own % — keep it
+  if(st.v!==VERSION) return null;
+  if(st.dedManual===undefined) st.dedManual = st.dedAuto ? null : (+st.ded||0);
+  return st;
+}
 function load(){
   // newest wins between the state baked into this file (Save As) and this device's autosave
   let emb=null, loc=null;
   try{ emb = JSON.parse(document.getElementById("savedState").textContent); }catch(e){}
   try{ const s = localStorage.getItem("budgetPlanner"); if(s) loc = JSON.parse(s); }catch(e){}
-  const pick = [emb,loc].filter(p=>p && p.v===VERSION).sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+  const pick = [emb,loc].map(migrate).filter(Boolean).sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
   return normalize(pick ? JSON.parse(JSON.stringify(pick)) : JSON.parse(JSON.stringify(DEFAULTS)));
 }
 function save(){ S.ts = Date.now(); try{ localStorage.setItem("budgetPlanner", JSON.stringify(S)); }catch(e){} }
@@ -229,7 +288,7 @@ function removeBucket(i){
   S.goals.forEach(g=> g.pulls.splice(i,1));
   refreshNames(); buildStatic(); render();
 }
-function resetAll(){ if(confirm("Reset everything to the built-in defaults? (Great for handing someone a fresh template)")){ S = JSON.parse(JSON.stringify(DEFAULTS)); refreshNames(); applyTitle(); buildStatic(); render(); } }
+function resetAll(){ if(confirm("Reset everything to the built-in defaults? (Great for handing someone a fresh template)")){ S = JSON.parse(JSON.stringify(DEFAULTS)); FLIPPED.clear(); refreshNames(); applyTitle(); buildStatic(); render(); } }
 // download a complete copy of this planner with the current data baked in —
 // save it to OneDrive and open it on any device; it carries your numbers with it
 function saveAs(){
@@ -251,23 +310,38 @@ const money = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString(undefined,{minimu
 const money0 = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString(undefined,{maximumFractionDigits:0});
 
 // ---- math ----
+// rough US federal estimate (2026 single filer): FICA + bracket tax on (gross − standard deduction).
+// A starting point so nobody has to know their tax rate — the % stays editable for fine-tuning.
+function estTaxPct(annualGross){
+  if(annualGross<=0) return 0;
+  const fica = Math.min(annualGross,184500)*0.062 + annualGross*0.0145;
+  let taxable = Math.max(0, annualGross-16100), fed = 0, prev = 0;
+  for(const [cap,r] of [[12400,.10],[50400,.12],[105700,.22],[201775,.24],[256225,.32],[640600,.35],[Infinity,.37]]){
+    if(taxable>prev) fed += (Math.min(taxable,cap)-prev)*r;
+    prev = cap;
+  }
+  return Math.round((fica+fed)/annualGross*1000)/10;
+}
 function calc(){
-  const keep = 1 - S.ded/100;
   const grossWeekly = S.rate*S.hours + S.sideRate*S.sideHours;
+  if(S.dedAuto) S.ded = estTaxPct(grossWeekly*52);
+  const keep = 1 - S.ded/100;
   const netWeekly = grossWeekly*keep;
   const billsMo = S.bills.reduce((a,b)=>a+(+b[1]||0),0);
-  const recurMo = S.recurring.reduce((a,b)=>a+(+b[1]||0),0);
+  const recurMo = S.recurring.reduce((a,b)=> a + (b[2]===0 ? 0 : (+b[1]||0)), 0);
+  const pausedMo = S.recurring.reduce((a,b)=> a + (b[2]===0 ? (+b[1]||0) : 0), 0);
   const outMo = billsMo + recurMo;
   const outWk = outMo*12/52;
   const basePoints = netWeekly - outWk;
   const newGross = S.newRate*(S.hours+S.extraHours) + S.wSideHours*S.wSideRate + S.sideRate*S.sideHours;
-  const newNet = newGross*keep;
+  const keepNew = S.dedAuto ? 1 - estTaxPct(newGross*52)/100 : keep;
+  const newNet = newGross*keepNew;
   const gained = Math.max(0, newNet - netWeekly);
   const withRaise = $("applyRaise").checked;
   const points = withRaise ? basePoints + gained : basePoints;
   const buckets = S.alloc.map((v,i)=> withRaise ? (+v||0)+(+S.raiseAlloc[i]||0) : (+v||0));
   const allocTotal = buckets.reduce((a,b)=>a+b,0);
-  return {grossWeekly, netWeekly, billsMo, recurMo, outMo, outWk, basePoints, newGross, newNet, gained, points, buckets, allocTotal, withRaise};
+  return {grossWeekly, netWeekly, billsMo, recurMo, pausedMo, outMo, outWk, basePoints, newGross, newNet, gained, points, buckets, allocTotal, withRaise};
 }
 
 // clamped setters — never allow allocating more than what's available
@@ -289,6 +363,8 @@ function setRaiseAlloc(i, val){
 function setPull(gi, bi, val){
   const others = S.goals.reduce((a,g,j)=> j===gi ? a : a + (+g.pulls[bi]||0), 0);
   S.goals[gi].pulls[bi] = Math.max(0, Math.min(+val||0, 100 - others));
+  const inp = $("pull"+gi+"_"+bi);
+  if(inp) inp.value = S.goals[gi].pulls[bi]; // show the clamped value even mid-focus
   render();
 }
 // log a spend against a bucket's reserve (refill restarts automatically)
@@ -296,22 +372,66 @@ function spendReserve(i){
   const amt = parseFloat(prompt("Spend how much from the "+BUCKET_NAMES[i]+" reserve?")) || 0;
   if(amt>0){ S.reserveBal[i] = Math.max(0, (+S.reserveBal[i]||0) - amt); render(); }
 }
-// time to reach `remain` given contributions that each start after a delay (weeks)
-function solveWeeks(pairs, remain){
-  if(remain<=0) return 0;
-  const ps = pairs.filter(p=>p.c>0.0001 && isFinite(p.d)).sort((a,b)=>a.d-b.d);
-  if(!ps.length) return Infinity;
-  let rate=0, t=0, acc=0, k=0;
-  while(k<ps.length){
-    const next=ps[k].d;
-    if(next>t && rate>0){
-      const add=rate*(next-t);
-      if(acc+add>=remain) return t+(remain-acc)/rate;
-      acc+=add;
+// ---- plan simulation ----
+// Walks the plan forward through time: reserves fill first, goals fund by
+// priority (card order), and when a goal completes its pull % spills over to
+// the highest-priority unfinished goal. Returns per-goal timing + milestones.
+function simulatePlan(bweek, resT, resB, goals){
+  const filled = bweek.map((w,i)=> !((+resT[i]||0)>0 && (+resB[i]||0) < (+resT[i]||0)));
+  const fillT  = bweek.map((w,i)=> filled[i] ? 0 : (w>0 ? ((+resT[i]||0)-(+resB[i]||0))/w : Infinity));
+  const eff    = goals.map(g=> g.pulls.map(p=> Math.max(0,Math.min(100,+p||0))));
+  const remain = goals.map(g=> Math.max(0, (+g.target||0) - (+g.saved||0)));
+  const done   = remain.map(r=> r<=0.005);
+  const out    = goals.map((g,i)=>({ finish: done[i] ? 0 : Infinity, start: null, boosts: [], effNow: null, rateNow: 0 }));
+  const milestones = [];
+  const weeklyOf = row => row.reduce((a,p,bi)=> a + bweek[bi]*p/100, 0);
+  function spill(gi, t){                       // hand gi's pull % down the line
+    if(!eff[gi].some(p=> p>0)) return;
+    const to = done.findIndex(d=> !d);
+    // report what actually flows at time t (reserve-gated); fall back to the full
+    // claim when every source bucket is still refilling — it flows once they fill
+    const flowing = eff[gi].reduce((a,p,bi)=> a + (filled[bi] ? bweek[bi]*p/100 : 0), 0);
+    const amt = flowing>0.005 ? flowing : weeklyOf(eff[gi]);
+    if(to>=0){
+      eff[gi].forEach((p,bi)=>{ if(p>0){ eff[to][bi] = Math.min(100, eff[to][bi]+p); } });
+      if(amt>0.005){
+        out[to].boosts.push({t, from:gi, add:amt});
+        milestones.push({t, type:"spill", gi, to, amt});
+      }
+    } else if(amt>0.005){                      // last goal in line — money returns to buckets
+      milestones.push({t, type:"free", gi, amt});
     }
-    t=Math.max(t,next); rate+=ps[k].c; k++;
+    eff[gi] = eff[gi].map(()=>0);
   }
-  return t+(remain-acc)/rate;
+  goals.forEach((g,gi)=>{ if(done[gi]) spill(gi, 0); }); // already-met goals release their % now
+  let t = 0, guard = 0;
+  while(guard++ < 500 && !done.every(Boolean)){
+    const rate = goals.map((g,gi)=> done[gi] ? 0 : eff[gi].reduce((a,p,bi)=> a + (filled[bi] ? bweek[bi]*p/100 : 0), 0))
+                      .map(r=> r>0.005 ? r : 0); // sub-half-cent trickles count as no flow
+    goals.forEach((g,gi)=>{
+      if(done[gi]) return;
+      if(t < 1e-9){ out[gi].effNow = eff[gi].slice(); out[gi].rateNow = rate[gi]; }
+      if(rate[gi] > 0.005 && out[gi].start === null) out[gi].start = t;
+    });
+    let dt = Infinity, ev = null;
+    fillT.forEach((f,bi)=>{ if(!filled[bi] && isFinite(f) && f-t < dt){ dt = f-t; ev = {type:"fill", bi}; } });
+    goals.forEach((g,gi)=>{ if(!done[gi] && rate[gi] > 0.005 && remain[gi]/rate[gi] < dt){ dt = remain[gi]/rate[gi]; ev = {type:"goal", gi}; } });
+    if(!ev) break;                             // nothing flows and nothing will — stop
+    dt = Math.max(0, dt);
+    goals.forEach((g,gi)=>{ if(!done[gi]) remain[gi] = Math.max(0, remain[gi]-rate[gi]*dt); });
+    t += dt;
+    if(ev.type==="fill"){ filled[ev.bi] = true; milestones.push({t, type:"reserve", bi:ev.bi}); }
+    else {
+      // complete EVERY goal that hit zero this instant (ties) before spilling,
+      // so a spill never targets a goal finishing at the same moment
+      goals.forEach((g,gi)=>{ if(!done[gi] && remain[gi] <= 1e-6){ done[gi] = true; out[gi].finish = t; milestones.push({t, type:"goal", gi}); } });
+      goals.forEach((g,gi)=>{ if(done[gi] && out[gi].finish === t) spill(gi, t); });
+    }
+  }
+  // reserves that keep filling after the last goal completes still make the timeline
+  fillT.forEach((f,bi)=>{ if(!filled[bi] && isFinite(f)) milestones.push({t:f, type:"reserve", bi}); });
+  goals.forEach((g,gi)=>{ if(out[gi].effNow===null) out[gi].effNow = eff[gi].slice(); });
+  return {res: out, milestones};
 }
 
 // ---- static builders ----
@@ -319,7 +439,14 @@ function listTable(key, tableId){
   const tb = $(tableId).querySelector("tbody"); tb.innerHTML = "";
   S[key].forEach((b,i)=>{
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="text" value="${b[0]}" onchange="S.${key}[${i}][0]=this.value;save()"></td>
+    const off = b[2]===0;
+    if(off) tr.className = "paused";
+    // recurring rows get a live "what if I cancelled this?" toggle
+    const sim = key==="recurring"
+      ? `<input type="checkbox" title="untick to simulate cancelling this — nothing is deleted" ${off?"":"checked"}
+           onchange="S.${key}[${i}][2]=this.checked?1:0;this.closest('tr').classList.toggle('paused',!this.checked);render()"> `
+      : "";
+    tr.innerHTML = `<td style="white-space:nowrap">${sim}<input type="text" value="${esc(b[0])}" onchange="S.${key}[${i}][0]=this.value;save()"></td>
       <td><input type="number" value="${b[1]}" step="0.01" onchange="S.${key}[${i}][1]=+this.value||0;render()"></td>
       <td><button class="danger" onclick="S.${key}.splice(${i},1);buildStatic();render()">×</button></td>`;
     tb.appendChild(tr);
@@ -342,22 +469,39 @@ function buildStatic(){
       el.appendChild(d);
     });
   });
-  // goals
+  // goals — flip cards: front = the plan, back (⚙) = the knobs
   const g = $("goals"); g.innerHTML = "";
   S.goals.forEach((goal,gi)=>{
-    const d = document.createElement("div"); d.className="goal";
-    d.innerHTML = `<div class="head">
-        <input type="text" value="${goal.name}" onchange="S.goals[${gi}].name=this.value;save()">
-        <button class="danger" onclick="S.goals.splice(${gi},1);buildStatic();render()">×</button></div>
-      <div class="row"><label>Target $</label><input type="number" value="${goal.target}" onchange="S.goals[${gi}].target=+this.value||0;render()"></div>
-      <div class="row"><label>Already saved $</label><input type="number" value="${goal.saved}" onchange="S.goals[${gi}].saved=+this.value||0;render()"></div>
-      <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
-      <div class="pulls">${BUCKET_SHORT.map((n,bi)=>`<div class="pull">${esc(n)} <span id="pullFree${gi}_${bi}"></span><br>
-        <input type="number" min="0" max="100" step="5" id="pull${gi}_${bi}" value="${goal.pulls[bi]}" onchange="setPull(${gi},${bi},this.value)">%</div>`).join("")}</div>
-      <div class="barwrap"><div class="bar" id="goalBar${gi}" style="background:${bColor(gi)}"></div></div>
-      <div class="eta"><span>gets <b id="goalWk${gi}"></b>/wk</span><span><b id="goalWeeks${gi}"></b></span><span>done <b id="goalDate${gi}"></b></span></div>
-      <div class="eta" id="goalRaise${gi}" style="color:var(--green)"></div>
-      <div class="hint" id="goalSrc${gi}"></div>`;
+    const d = document.createElement("div"); d.className="goalwrap";
+    d.innerHTML = `<div class="flip${FLIPPED.has(gi)?" flipped":""}" id="flip${gi}">
+      <div class="face front goal">
+        <div class="head">
+          <span class="prio" title="funding priority — money focuses here first">#${gi+1}</span>
+          <b class="gname" id="gname${gi}">${esc(goal.name)}</b>
+          <button class="ord" ${gi===0?"disabled":""} title="raise priority" onclick="moveGoal(${gi},-1)">▲</button>
+          <button class="ord" ${gi===S.goals.length-1?"disabled":""} title="lower priority" onclick="moveGoal(${gi},1)">▼</button>
+          <button class="flipbtn" title="flip for settings" onclick="toggleFlip(${gi})">⚙</button>
+        </div>
+        <div class="barwrap"><div class="bar" id="goalBar${gi}" style="background:${bColor(gi)}"></div></div>
+        <div class="eta"><span>saved <b id="goalProg${gi}"></b></span><span>gets <b id="goalWk${gi}"></b>/wk</span></div>
+        <div class="eta"><span><b id="goalWeeks${gi}"></b></span><span>done <b id="goalDate${gi}"></b></span></div>
+        <div class="eta" id="goalBoost${gi}" style="color:var(--blue)"></div>
+        <div class="eta" id="goalRaise${gi}" style="color:var(--green)"></div>
+        <div class="hint" id="goalSrc${gi}"></div>
+      </div>
+      <div class="face back goal">
+        <div class="head">
+          <input type="text" value="${esc(goal.name)}" onchange="S.goals[${gi}].name=this.value;$('gname${gi}').textContent=this.value;render()">
+          <button class="danger" title="delete this goal" onclick="removeGoal(${gi})">×</button>
+          <button class="flipbtn" title="flip back" onclick="toggleFlip(${gi})">↩</button>
+        </div>
+        <div class="row"><label>Target $</label><input type="number" value="${goal.target}" onchange="S.goals[${gi}].target=+this.value||0;render()"></div>
+        <div class="row"><label>Already saved $</label><input type="number" value="${goal.saved}" onchange="S.goals[${gi}].saved=+this.value||0;render()"></div>
+        <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
+        <div class="pulls">${BUCKET_SHORT.map((n,bi)=>`<div class="pull">${esc(n)} <span id="pullFree${gi}_${bi}"></span><br>
+          <input type="number" min="0" max="100" step="5" id="pull${gi}_${bi}" value="${goal.pulls[bi]}" onchange="setPull(${gi},${bi},this.value)">%</div>`).join("")}</div>
+      </div>
+    </div>`;
     g.appendChild(d);
   });
   // bucket summary rows (reserve controls live here; dynamic cells updated in render)
@@ -376,7 +520,7 @@ function buildStatic(){
   const dtb = $("debtTable").querySelector("tbody"); dtb.innerHTML = "";
   S.debts.forEach((dt,i)=>{
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="text" value="${dt[0]}" style="width:88px" onchange="S.debts[${i}][0]=this.value;save()"></td>
+    tr.innerHTML = `<td><input type="text" value="${esc(dt[0])}" style="width:88px" onchange="S.debts[${i}][0]=this.value;save()"></td>
       <td><input type="number" style="width:68px" value="${dt[1]}" onchange="S.debts[${i}][1]=+this.value||0;render()"></td>
       <td><input type="number" style="width:68px" value="${dt[2]}" onchange="S.debts[${i}][2]=+this.value||0;render()"></td>
       <td id="dUtil${i}"></td>
@@ -386,12 +530,43 @@ function buildStatic(){
     dtb.appendChild(tr);
   });
   // income + raise inputs
-  ["rate","hours","sideRate","sideHours","ded","newRate","extraHours","wSideHours","wSideRate"]
+  ["rate","hours","sideRate","sideHours","newRate","extraHours","wSideHours","wSideRate"]
    .forEach(key=>{ $(key).value = S[key]; $(key).onchange = e=>{ S[key]=+e.target.value||0; render(); }; });
+  // tax %: typing a value takes over from the auto estimate; the typed value is
+  // remembered separately so toggling auto on and off never destroys it
+  $("ded").value = S.ded;
+  $("ded").onchange = e=>{ S.ded = +e.target.value||0; S.dedManual = S.ded; S.dedAuto = false; render(); };
+  $("dedAuto").checked = !!S.dedAuto;
+  $("dedAuto").onchange = e=>{
+    S.dedAuto = e.target.checked;
+    if(!S.dedAuto && S.dedManual!=null) S.ded = S.dedManual;
+    render();
+  };
 }
 function addRow(key){ S[key].push(["New item",0]); buildStatic(); render(); }
 function addGoal(){ S.goals.push({name:"New goal",target:1000,saved:0,pulls:BUCKET_NAMES.map(()=>0)}); buildStatic(); render(); }
 function addDebt(){ S.debts.push(["New debt",0,0,0]); buildStatic(); render(); }
+// goal card flip + priority order (card order IS the priority)
+const FLIPPED = new Set(); // which cards show their settings side — per session, not saved
+function toggleFlip(gi){
+  FLIPPED.has(gi) ? FLIPPED.delete(gi) : FLIPPED.add(gi);
+  $("flip"+gi).classList.toggle("flipped", FLIPPED.has(gi));
+}
+function moveGoal(gi, dir){
+  const j = gi+dir;
+  if(j<0 || j>=S.goals.length) return;
+  [S.goals[gi], S.goals[j]] = [S.goals[j], S.goals[gi]];
+  const a = FLIPPED.has(gi), b = FLIPPED.has(j);
+  FLIPPED[b?"add":"delete"](gi); FLIPPED[a?"add":"delete"](j);
+  buildStatic(); render();
+}
+function removeGoal(gi){
+  if(!confirm('Delete the "'+S.goals[gi].name+'" goal?')) return;
+  S.goals.splice(gi,1);
+  const keep = [...FLIPPED].filter(i=> i!==gi).map(i=> i>gi ? i-1 : i); // other cards stay flipped
+  FLIPPED.clear(); keep.forEach(i=> FLIPPED.add(i));
+  buildStatic(); render();
+}
 
 // ---- render ----
 let chart;
@@ -404,6 +579,10 @@ function render(){
   $("billsTotal").textContent = money(c.billsMo);
   $("recurringTotal").textContent = money(c.recurMo);
   $("recurringFree").textContent = money(c.recurMo) + "/mo";
+  $("recurringPaused").textContent = c.pausedMo>0.005 ? "+"+money(c.pausedMo)+"/mo" : "—";
+  if(document.activeElement!==$("ded")) $("ded").value = S.ded;
+  $("dedAuto").checked = !!S.dedAuto;
+  $("ded").style.opacity = S.dedAuto ? .75 : 1;
   $("pointsBox").textContent = money(c.points) + " / wk";
   $("pointsBox").className = "big " + (c.points>=0?"pts-ok":"pts-over");
 
@@ -445,8 +624,10 @@ function render(){
   $("raiseRemainBox").textContent = "New points remaining: " + money(rRem);
   $("raiseRemainBox").className = "big " + (Math.abs(rRem)<0.01 ? "pts-ok" : rRem<0 ? "pts-over" : "pts-left");
 
-  // goals — pooled: all goals share one 100% pool per bucket
-  const committed = BUCKET_NAMES.map(()=>0);
+  // goals — priority waterfall: simulate the plan through time; when a goal
+  // completes, its pull % spills over to the next goal in line automatically
+  const committed = BUCKET_NAMES.map(()=>0); // raw claims — cap the pull inputs at one 100% pool per bucket
+  S.goals.forEach(g=> g.pulls.forEach((p,bi)=>{ committed[bi] += Math.max(0,Math.min(100,+p||0)); }));
   // what-if buckets: use panel 5's split of the new points if any; otherwise auto-split
   // the raise proportionally to the current allocation so the what-if always works
   const rSpentG = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
@@ -458,23 +639,28 @@ function render(){
     return (+v||0)+extra;
   });
   const note = $("goalRaiseNote");
-  if(c.withRaise) note.textContent = "Raise is included in the main numbers above (panel 4 toggle is on).";
+  if(c.withRaise) note.textContent = (c.gained>0.005 && rSpentG<=0.005)
+    ? "Raise is included in your points (panel 4 toggle is on) — but none of the new money is aimed at a bucket yet. Split it in panel 5 (or move the panel 4 sliders) so goals actually speed up."
+    : "Raise is included in the main numbers above (panel 4 toggle is on).";
   else if(c.gained<=0.005) note.textContent = "";
   else if(rSpentG>0.005) note.textContent = `What-if lines use your panel 5 split of the +${money(c.gained)}/wk raise.`;
   else note.textContent = `What-if lines auto-split the +${money(c.gained)}/wk raise proportionally across your buckets — allocate it yourself in panel 5 to take control.`;
-  S.goals.forEach(g=> g.pulls.forEach((p,bi)=>{ committed[bi] += Math.max(0,Math.min(100,+p||0)); }));
+  const sim  = simulatePlan(c.buckets, S.reserveTarget, S.reserveBal, S.goals);
+  const simR = simulatePlan(mergedBuckets, S.reserveTarget, S.reserveBal, S.goals);
+  const gname  = gi => S.goals[gi] ? S.goals[gi].name : "?";
+  const FAR = 5200; // ~100 years of weeks — past this we call it "never"
+  const fmtWks = w => w.toFixed(1)+" wks ("+(w/4.333).toFixed(1)+" mo)";
+  const fmtMo  = w => new Date(Date.now()+w*6.048e8).toLocaleDateString(undefined,{month:"short",year:"numeric"});
+  const fmtDay = w => new Date(Date.now()+w*6.048e8).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
   // reserves: weeks until each bucket's reserve is full (0 = full / no reserve)
   const resT = S.reserveTarget, resB = S.reserveBal;
   const delay = c.buckets.map((w,i)=> resT[i]>0 && resB[i]<resT[i] ? (w>0 ? (resT[i]-resB[i])/w : Infinity) : 0);
-  const delayR = mergedBuckets.map((w,i)=> resT[i]>0 && resB[i]<resT[i] ? (w>0 ? (resT[i]-resB[i])/w : Infinity) : 0);
   S.goals.forEach((g,gi)=>{
-    let wk = 0, wkRaise = 0; const src = [], pairs = [], pairsR = [];
+    const r = sim.res[gi];
+    const isDone = (+g.target||0) - (+g.saved||0) <= 0.005;
+    const claim = r.effNow.reduce((a,p,bi)=> a + c.buckets[bi]*p/100, 0); // what it draws today, spillover included
     g.pulls.forEach((p,bi)=>{
       p = Math.max(0,Math.min(100,+p||0));
-      const rate = c.buckets[bi]*p/100, rateR = mergedBuckets[bi]*p/100;
-      wk += rate; wkRaise += rateR;
-      if(rate>0.005){ src.push(`${BUCKET_SHORT[bi]} ${money(rate)}`); pairs.push({c:rate,d:delay[bi]}); }
-      if(rateR>0.005) pairsR.push({c:rateR,d:delayR[bi]});
       const inp = $("pull"+gi+"_"+bi);
       if(inp){
         const free = Math.max(0, 100 - committed[bi] + p);
@@ -484,26 +670,41 @@ function render(){
         if(fl) fl.textContent = "("+Math.round(free)+"% max)";
       }
     });
-    const remain = Math.max(0, g.target-g.saved);
-    const weeks = solveWeeks(pairs, remain);
-    $("goalWk"+gi).textContent = money(wk);
-    $("goalWeeks"+gi).textContent = isFinite(weeks) ? weeks.toFixed(1)+" wks ("+(weeks/4.333).toFixed(1)+" mo)" : "not funded";
-    $("goalDate"+gi).textContent = isFinite(weeks) ? new Date(Date.now()+weeks*6.048e8).toLocaleDateString(undefined,{month:"short",year:"numeric"}) : "—";
+    $("goalProg"+gi).textContent = money0(g.saved)+" / "+money0(g.target);
+    $("goalWk"+gi).textContent = money(r.rateNow); // reserve-gated: what actually flows this week
     $("goalBar"+gi).style.width = Math.min(100, g.target>0 ? g.saved/g.target*100 : 0)+"%";
-    const waits = g.pulls.map((p,bi)=> (+p>0 && delay[bi]>0.05) ? BUCKET_SHORT[bi]+" "+(isFinite(delay[bi])?delay[bi].toFixed(1)+"w":"∞") : null).filter(Boolean);
-    $("goalSrc"+gi).textContent = (src.length ? "from: "+src.join(" · ") : "") + (waits.length ? "  ·  waits on reserve: "+waits.join(", ") : "");
+    const weeks = r.finish;
+    const reachable = isFinite(weeks) && weeks <= FAR;
+    $("goalWeeks"+gi).textContent = isDone ? "✓ complete" : reachable ? fmtWks(weeks) : isFinite(weeks) ? "100+ years" : "not funded";
+    $("goalDate"+gi).textContent = isDone ? "🎉" : reachable ? fmtMo(weeks) : "—";
+    // queued / boosted-later info from the simulation
+    const bits = [];
+    if(!isDone && claim > r.rateNow + 0.005) bits.push(money(claim)+"/wk once reserves are full");
+    if(!isDone && r.start!==null && r.start>0.05) bits.push("starts wk "+r.start.toFixed(1));
+    r.boosts.forEach(b=>{ if(isFinite(b.t) && b.t>0.05 && b.t<=FAR) bits.push("+"+money(b.add)+"/wk at wk "+b.t.toFixed(1)+" (after “"+gname(b.from)+"”)"); });
+    $("goalBoost"+gi).innerHTML = bits.length ? `<span>${bits.map(esc).join(" · ")}</span>` : "";
+    const src = r.effNow.map((p,bi)=> c.buckets[bi]*p/100>0.005 ? BUCKET_SHORT[bi]+" "+money(c.buckets[bi]*p/100)+(delay[bi]>0.05 ? " (after reserve)" : "") : null).filter(Boolean);
+    const spilled = sim.milestones.find(m=> (m.type==="spill"||m.type==="free") && m.gi===gi && m.t<0.05);
+    $("goalSrc"+gi).textContent = isDone
+      ? (spilled && spilled.type==="spill" ? "✓ done — its pull % now boosts “"+gname(spilled.to)+"”"
+         : spilled ? "✓ done — its money went back to the buckets" : "✓ done")
+      : (src.length ? "from: "+src.join(" · ")
+        : g.pulls.some(p=> +p>0) ? "its buckets have no weekly $ yet — move the sliders in panel 4"
+        : "flip this card (⚙) and set a pull % to fund it");
     // what-if: same pulls, but with the raise money allocated in panel 5 included
     const el = $("goalRaise"+gi);
-    const weeksR = solveWeeks(pairsR, remain);
-    if(!c.withRaise && c.gained>0.005 && isFinite(weeksR) && (!isFinite(weeks) || weeksR < weeks-0.05)){
-      el.innerHTML = `<span>w/ raise: <b>${money(wkRaise)}</b>/wk</span><span><b>${weeksR.toFixed(1)} wks (${(weeksR/4.333).toFixed(1)} mo)</b></span><span>done <b>${new Date(Date.now()+weeksR*6.048e8).toLocaleDateString(undefined,{month:"short",year:"numeric"})}</b></span>`;
-    } else if(!c.withRaise && c.gained>0.005 && !isFinite(weeksR)){
+    const weeksR = simR.res[gi].finish;
+    const reachR = isFinite(weeksR) && weeksR <= FAR;
+    if(!isDone && !c.withRaise && c.gained>0.005 && reachR && (!reachable || weeksR < weeks-0.05)){
+      el.innerHTML = `<span>w/ raise: <b>${fmtWks(weeksR)}</b></span><span>done <b>${fmtMo(weeksR)}</b></span>`;
+    } else if(!isDone && !c.withRaise && c.gained>0.005 && !reachR){
       el.innerHTML = `<span>w/ raise: still not funded — set some pull %</span>`;
     } else el.innerHTML = "";
   });
-  // bucket summary: weekly / reserve / to goals / left
+  // bucket summary: weekly / reserve / to goals (live claims incl. spillover) / left
+  const active = BUCKET_NAMES.map((n,bi)=> Math.min(100, sim.res.reduce((a,r)=> a + (+r.effNow[bi]||0), 0)));
   BUCKET_NAMES.forEach((n,i)=>{
-    const pctC = Math.min(100, committed[i]);
+    const pctC = active[i];
     const refilling = resT[i]>0 && resB[i]<resT[i];
     const overflow = refilling ? 0 : c.buckets[i];
     const toGoals = overflow*pctC/100;
@@ -519,6 +720,25 @@ function render(){
     $("resBar"+i).title = resT[i]>0 ? "reserve fill" : "left over";
   });
 
+  // plan timeline — every milestone the simulation found, in order
+  const tl = $("timeline"); tl.innerHTML = "";
+  const tlAdd = (cls, when, html) => { const e = document.createElement("li"); if(cls) e.className = cls; e.innerHTML = `<span class="when">${when}</span>${html}`; tl.appendChild(e); };
+  if(!S.goals.length){
+    tlAdd("", "—", "add a goal to see your plan take shape here");
+  } else {
+    const flowNow = sim.res.reduce((a,r)=> a + r.rateNow, 0);
+    tlAdd("", "Now", `goals are receiving <b>${money(flowNow)}</b>/wk of your <b>${money(c.allocTotal)}</b>/wk bucket money`);
+    sim.milestones.filter(m=> isFinite(m.t) && m.t<=FAR).sort((a,b)=> a.t-b.t).forEach(m=>{
+      const when = m.t<0.05 ? "Now" : "wk "+m.t.toFixed(1)+" · "+fmtDay(m.t);
+      if(m.type==="reserve") tlAdd("tl-res", when, `<b>${esc(BUCKET_NAMES[m.bi])}</b> reserve full — its overflow starts flowing to goals`);
+      else if(m.type==="goal") tlAdd("tl-goal", when, `🎯 <b>${esc(gname(m.gi))}</b> complete`);
+      else if(m.type==="spill") tlAdd("tl-spill", when, `<b>${money(m.amt)}</b>/wk spills from “${esc(gname(m.gi))}” to <b>“${esc(gname(m.to))}”</b>`);
+      else if(m.type==="free") tlAdd("tl-spill", when, `last goal in line done — <b>${money(m.amt)}</b>/wk frees up in its buckets for whatever comes next (upkeep, payments, a new goal)`);
+    });
+    const stuck = S.goals.filter((g,gi)=> !(sim.res[gi].finish <= FAR)).map(g=>g.name);
+    if(stuck.length) tlAdd("", "⚠ never", `<b>${stuck.map(esc).join(", ")}</b> never finishes — no money reaches it yet (set a pull %, or its bucket / reserve has no inflow)`);
+  }
+
   // debts
   let dB=0,dL=0,dP=0;
   S.debts.forEach((d,i)=>{
@@ -531,14 +751,17 @@ function render(){
   $("debtUtil").textContent = dL>0 ? (dB/dL*100).toFixed(1)+"%" : "—";
   $("debtMonths").textContent = dP>0 ? (dB/dP).toFixed(1)+" mo" : "—";
 
-  // chart
-  const labels = ["Bills (fixed)","Recurring", ...BUCKET_NAMES];
-  const data = [c.billsMo, c.recurMo, ...c.buckets.map(v=>v*52/12)];
-  if(!chart){
-    chart = new Chart($("mapChart"), {type:"doughnut",
-      data:{labels, datasets:[{data, backgroundColor:["#666f8d","#8d6a66",...BUCKET_NAMES.map((_,i)=>bColor(i))], borderColor:"#242836", borderWidth:2}]},
-      options:{plugins:{legend:{position:"right",labels:{color:"#e8eaf2",font:{size:11}}}}}});
-  } else { chart.data.labels = labels; chart.data.datasets[0].data = data; chart.data.datasets[0].backgroundColor = ["#666f8d","#8d6a66",...BUCKET_NAMES.map((_,i)=>bColor(i))]; chart.update(); }
+  // chart — skipped gracefully when the Chart.js CDN is unreachable (offline use),
+  // so a missing chart can never take autosave down with it
+  if(typeof Chart !== "undefined") try{
+    const labels = ["Bills (fixed)","Recurring", ...BUCKET_NAMES];
+    const data = [c.billsMo, c.recurMo, ...c.buckets.map(v=>v*52/12)];
+    if(!chart){
+      chart = new Chart($("mapChart"), {type:"doughnut",
+        data:{labels, datasets:[{data, backgroundColor:["#666f8d","#8d6a66",...BUCKET_NAMES.map((_,i)=>bColor(i))], borderColor:"#242836", borderWidth:2}]},
+        options:{plugins:{legend:{position:"right",labels:{color:"#e8eaf2",font:{size:11}}}}}});
+    } else { chart.data.labels = labels; chart.data.datasets[0].data = data; chart.data.datasets[0].backgroundColor = ["#666f8d","#8d6a66",...BUCKET_NAMES.map((_,i)=>bColor(i))]; chart.update(); }
+  }catch(e){}
   save();
 }
 $("applyRaise").onchange = render;
