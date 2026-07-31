@@ -1,775 +1,1750 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Budget Planner</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-  :root{
-    --bg:#1a1d27; --panel:#242836; --panel2:#2c3144; --ink:#e8eaf2; --muted:#9aa0b5;
-    --orange:#f2762e; --green:#3ddc84; --red:#ff5c6c; --amber:#ffc94d; --blue:#5b9bff;
-    --bar:#3a4059;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif;padding:18px;max-width:1250px;margin:0 auto}
-  h1{color:var(--orange);font-size:26px;margin-bottom:2px}
-  h1[contenteditable]:hover,h1[contenteditable]:focus{outline:1px dashed var(--orange);outline-offset:4px;border-radius:4px;cursor:text}
-  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:14px}
-  .card{background:var(--panel);border-radius:12px;padding:16px;border:1px solid #333a52}
-  .card h2{font-size:15px;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0}
-  .row label{font-size:13px;color:var(--muted)}
-  input[type=number],input[type=text]{background:var(--panel2);border:1px solid #3a4059;color:var(--ink);border-radius:6px;padding:5px 8px;width:110px;font-size:14px;text-align:right}
-  input[type=text]{text-align:left;width:150px}
-  input[type=range]{flex:1;accent-color:var(--orange)}
-  .stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed #3a4059;font-size:14px}
-  .stat span{color:var(--muted);flex:1;min-width:0}
-  .stat b{font-variant-numeric:tabular-nums;white-space:nowrap}
-  .big{font-size:28px;font-weight:700;text-align:center;padding:10px;border-radius:10px;background:var(--panel2);margin:8px 0;font-variant-numeric:tabular-nums}
-  .pts-ok{color:var(--green)} .pts-over{color:var(--red)} .pts-left{color:var(--amber)}
-  .bucket{margin:10px 0}
-  .bucket .top{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px;margin-bottom:3px}
-  .bucket .top b{font-variant-numeric:tabular-nums}
-  .bucket .top input.bname{background:transparent;border:none;border-bottom:1px dashed transparent;color:var(--muted);font-size:13px;flex:1;min-width:0;padding:0}
-  .bucket .top input.bname:hover,.bucket .top input.bname:focus{border-bottom-color:var(--orange);outline:none;color:var(--ink)}
-  .bucket .top button.danger{line-height:1}
-  .barwrap{height:14px;background:var(--bar);border-radius:7px;overflow:hidden}
-  .bar{height:100%;border-radius:7px;transition:width .2s}
-  .ctrl{display:flex;gap:8px;align-items:center;margin-top:4px}
-  .goal{background:var(--panel2);border-radius:10px;padding:12px}
-  .goal .head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
-  .goal .head input[type=text]{font-weight:600;background:transparent;border:none;color:var(--ink);font-size:15px;flex:1;min-width:0}
-  .pulls{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px;margin:8px 0}
-  .pull{text-align:center;font-size:11px;color:var(--muted)}
-  .pull input{width:100%;text-align:center;padding:3px}
-  .eta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:13px;margin-top:6px;color:var(--muted)}
-  .eta b{color:var(--ink);font-variant-numeric:tabular-nums}
-  button{background:var(--orange);border:none;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px}
-  button.ghost{background:transparent;border:1px solid #3a4059;color:var(--muted)}
-  button.danger{background:transparent;border:1px solid var(--red);color:var(--red);padding:2px 8px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  td,th{padding:4px 6px;text-align:right;border-bottom:1px solid #333a52;white-space:nowrap}
-  td:first-child,th:first-child{text-align:left}
-  .scroll{overflow-x:auto;margin:4px 0;max-width:100%}
-  .tag{font-size:11px;background:var(--panel2);color:var(--muted);border-radius:20px;padding:2px 10px}
-  .full{grid-column:1/-1}
-  canvas{max-height:260px}
-  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap}
-  /* phones: fluid name inputs so the fixed-width tables never force sideways scroll */
-  table input[type=text]{width:100%;min-width:80px}
-  @media (max-width:430px){
-    body{padding:10px}
-    input[type=number]{width:88px}
-    input[type=number],input[type=text]{font-size:16px} /* 16px stops iOS auto-zoom on focus */
-    .timeline li .when{display:block;min-width:0}
-  }
-  @media (pointer:coarse){ /* finger-sized targets so a flip tap can't mis-hit reorder */
-    button.ord{padding:7px 11px;font-size:12px}
-    button.flipbtn{padding:7px 11px}
-  }
-  .switch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
-  .hint{font-size:12px;color:var(--muted);font-style:italic;margin:4px 0}
-  .goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px;margin-top:10px}
-  /* goal card flip (works with tap or click — no hover needed) */
-  .goalwrap{perspective:1200px;min-width:0}
-  .flip{display:grid;transition:transform .5s;transform-style:preserve-3d;position:relative}
-  .flip .face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;min-width:0}
-  .flip .face.back{transform:rotateY(180deg)}
-  .flip.flipped{transform:rotateY(180deg)}
-  .flip{height:100%}
-  /* the hidden face is lifted out of the flow (card hugs its visible side) and made
-     invisible to keyboard-tab and screen readers once the turn is half done */
-  .flip .face{visibility:visible;transition:visibility 0s}
-  .flip:not(.flipped) .face.back{pointer-events:none;position:absolute;top:0;left:0;right:0;visibility:hidden;transition:visibility 0s .25s}
-  .flip.flipped .face.front{pointer-events:none;position:absolute;top:0;left:0;right:0;visibility:hidden;transition:visibility 0s .25s}
-  .prio{background:var(--orange);color:#fff;border-radius:20px;font-size:11px;padding:2px 8px;font-weight:700;white-space:nowrap}
-  .goal .head .gname{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  button.ord{background:transparent;border:1px solid #3a4059;color:var(--muted);padding:1px 7px;font-size:11px}
-  button.ord:disabled{opacity:.25;cursor:default}
-  button.flipbtn{background:transparent;border:1px solid var(--orange);color:var(--orange);padding:2px 8px}
-  tr.paused input[type=text],tr.paused input[type=number]{text-decoration:line-through;color:var(--muted)}
-  /* plan timeline */
-  .timeline{list-style:none;margin:8px 0 0;padding:0}
-  .timeline li{position:relative;padding:5px 0 5px 26px;font-size:13px;color:var(--muted)}
-  .timeline li::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:2px;background:var(--bar)}
-  .timeline li:first-child::before{top:12px}
-  .timeline li:last-child::before{bottom:auto;height:12px}
-  .timeline li::after{content:"";position:absolute;left:1px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--panel2);border:2px solid var(--muted)}
-  .timeline li.tl-goal::after{border-color:var(--green);background:var(--green)}
-  .timeline li.tl-res::after{border-color:var(--amber)}
-  .timeline li.tl-spill::after{border-color:var(--blue)}
-  .timeline li b{color:var(--ink)}
-  .timeline li .when{display:inline-block;min-width:130px;color:var(--ink);font-weight:600}
-</style>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Waypoint Budget Planner</title>
+  <style>
+    :root {
+      --bg: #07111c;
+      --bg-soft: #0a1724;
+      --panel: #0f1e2c;
+      --panel-2: #142638;
+      --panel-3: #1a3044;
+      --text: #edf5f7;
+      --muted: #91a7b2;
+      --faint: #637984;
+      --line: #24394a;
+      --line-strong: #335064;
+      --accent: #f5a66b;
+      --accent-2: #ffbc82;
+      --teal: #51d6b3;
+      --blue: #69a9ff;
+      --yellow: #f2cc60;
+      --red: #ff7a82;
+      --purple: #a98df7;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .24);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 12% -10%, rgba(81, 214, 179, .11), transparent 30rem),
+        radial-gradient(circle at 95% 0%, rgba(245, 166, 107, .09), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+    button, input, select { font: inherit; }
+    button, summary, input[type="checkbox"] { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+      outline: 3px solid rgba(105, 169, 255, .55);
+      outline-offset: 2px;
+    }
+    input[type="number"] { font-variant-numeric: tabular-nums; }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { opacity: .65; }
+
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      min-height: 70px;
+      padding: 12px clamp(16px, 3vw, 42px);
+      border-bottom: 1px solid rgba(51, 80, 100, .72);
+      background: rgba(7, 17, 28, .9);
+      backdrop-filter: blur(18px);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: max-content; }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(81, 214, 179, .45);
+      border-radius: 11px;
+      color: var(--teal);
+      background: rgba(81, 214, 179, .09);
+      box-shadow: inset 0 0 18px rgba(81, 214, 179, .05);
+      font-weight: 800;
+    }
+    .brand-name { font-weight: 750; letter-spacing: -.02em; }
+    .brand-sub { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .nav-tabs { display: flex; align-items: center; gap: 4px; flex: 1; }
+    .nav-tab {
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 12px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .nav-tab:hover { color: var(--text); background: rgba(255,255,255,.035); }
+    .nav-tab.active { color: var(--text); background: var(--panel-2); }
+    .save-state {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px rgba(81,214,179,.55); }
+
+    main { width: min(1440px, 100%); margin: 0 auto; padding: 32px clamp(16px, 3vw, 42px) 80px; }
+    .view { display: none; animation: lift .22s ease; }
+    .view.active { display: block; }
+    @keyframes lift { from { opacity: .4; transform: translateY(4px); } }
+
+    .page-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .eyebrow { margin: 0 0 5px; color: var(--teal); font-size: 11px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 7px; font-size: clamp(25px, 3vw, 38px); letter-spacing: -.035em; line-height: 1.08; }
+    h2 { margin-bottom: 5px; font-size: 18px; letter-spacing: -.015em; }
+    h3 { margin-bottom: 5px; font-size: 14px; }
+    .lede { max-width: 720px; margin-bottom: 0; color: var(--muted); font-size: 14px; }
+    .muted { color: var(--muted); }
+    .tiny { color: var(--muted); font-size: 11px; }
+    .mono { font-variant-numeric: tabular-nums; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 8px 13px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .btn:hover { background: var(--panel-3); border-color: #44677e; }
+    .btn.primary { border-color: transparent; background: var(--accent); color: #17202a; }
+    .btn.primary:hover { background: var(--accent-2); }
+    .btn.ghost { background: transparent; }
+    .btn.danger { border-color: rgba(255,122,130,.35); color: var(--red); background: rgba(255,122,130,.06); }
+    .btn.icon { min-width: 34px; min-height: 34px; padding: 5px 9px; }
+    .btn:disabled { opacity: .34; cursor: not-allowed; }
+    .button-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(20,38,56,.96), rgba(13,28,41,.96));
+      box-shadow: var(--shadow);
+    }
+    .card-pad { padding: 20px; }
+    .card-head { display: flex; justify-content: space-between; align-items: start; gap: 18px; margin-bottom: 17px; }
+    .card-head p { margin-bottom: 0; color: var(--muted); font-size: 12px; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, .75fr); gap: 18px; align-items: start; }
+    .stack { display: grid; gap: 18px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+    .metric { min-width: 0; padding: 16px; background: rgba(9,22,34,.78); }
+    .metric-label { color: var(--muted); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .07em; }
+    .metric-value { margin-top: 4px; font-size: clamp(18px, 2.3vw, 28px); font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .metric-note { margin-top: 2px; color: var(--faint); font-size: 11px; }
+    .good { color: var(--teal) !important; }
+    .warn { color: var(--yellow) !important; }
+    .bad { color: var(--red) !important; }
+
+    .priority-banner {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 15px 16px;
+      border: 1px solid rgba(245,166,107,.26);
+      border-radius: 15px;
+      background: linear-gradient(90deg, rgba(245,166,107,.1), rgba(245,166,107,.025));
+    }
+    .priority-banner.off { border-color: var(--line); background: rgba(105,169,255,.045); }
+    .mode-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: rgba(245,166,107,.12); color: var(--accent); font-weight: 850; }
+    .priority-banner.off .mode-icon { background: rgba(105,169,255,.11); color: var(--blue); }
+    .mode-copy strong { display: block; margin-bottom: 2px; font-size: 13px; }
+    .mode-copy span { display: block; color: var(--muted); font-size: 12px; }
+    .switch { position: relative; display: inline-block; width: 48px; height: 27px; flex: 0 0 auto; }
+    .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .switch-track { position: absolute; inset: 0; border-radius: 20px; background: #334759; transition: .2s; }
+    .switch-track::after { content: ""; position: absolute; width: 21px; height: 21px; left: 3px; top: 3px; border-radius: 50%; background: #d8e2e6; transition: .2s; box-shadow: 0 2px 5px rgba(0,0,0,.35); }
+    .switch input:checked + .switch-track { background: var(--accent); }
+    .switch input:checked + .switch-track::after { transform: translateX(21px); background: #17202a; }
+    .switch input:focus-visible + .switch-track { outline: 3px solid rgba(105,169,255,.55); outline-offset: 3px; }
+
+    .pool-figure { padding: 22px; }
+    .pool-number { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+    .pool-number b { font-size: clamp(34px, 5vw, 58px); line-height: 1; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+    .pool-number span { color: var(--muted); font-weight: 650; }
+    .allocation-track { display: flex; height: 18px; margin: 20px 0 10px; overflow: hidden; border-radius: 999px; background: #08131f; box-shadow: inset 0 0 0 1px var(--line); }
+    .allocation-segment { min-width: 0; height: 100%; transition: width .25s ease; }
+    .allocation-segment:first-child { border-radius: 999px 0 0 999px; }
+    .allocation-segment:last-child { border-radius: 0 999px 999px 0; }
+    .allocation-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+    .swatch { width: 8px; height: 8px; border-radius: 50%; }
+
+    .alert-list { display: grid; gap: 9px; }
+    .alert-item { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .alert-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .alert-dot { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--blue); }
+    .alert-dot.warning { background: var(--yellow); }
+    .alert-dot.danger { background: var(--red); }
+    .alert-title { margin-bottom: 2px; font-size: 12px; font-weight: 700; }
+    .alert-copy { color: var(--muted); font-size: 11px; }
+
+    .bucket-list { display: grid; gap: 9px; }
+    .bucket-row {
+      display: grid;
+      grid-template-columns: minmax(130px, 1fr) minmax(125px, 1.2fr) 104px 38px 38px;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .bucket-row:last-child { border-bottom: 0; }
+    .bucket-identity { display: flex; align-items: center; min-width: 0; gap: 9px; }
+    .bucket-color { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 50%; }
+    .bucket-title { min-width: 0; }
+    .bucket-title strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .bucket-title span { color: var(--muted); font-size: 10px; }
+    .mini-track { height: 7px; overflow: hidden; border-radius: 999px; background: #091522; }
+    .mini-fill { height: 100%; border-radius: inherit; }
+    .field-inline { display: flex; align-items: center; gap: 5px; }
+    .prefix, .suffix { color: var(--muted); font-size: 11px; }
+
+    .input, .select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      padding: 8px 10px;
+      background: #0a1825;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .input:hover, .select:hover { border-color: #476a80; }
+    .input.compact { min-height: 34px; padding: 6px 8px; font-size: 12px; }
+    .input.name { background: transparent; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .field label, .field-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 650; }
+    .field-help { margin-top: 5px; color: var(--faint); font-size: 10px; }
+    .section-rule { height: 1px; margin: 20px 0; background: var(--line); }
+
+    .cash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .line-list { display: grid; gap: 8px; }
+    .line-row { display: grid; grid-template-columns: 28px minmax(130px, 1fr) 130px 38px; gap: 8px; align-items: center; }
+    .check { width: 17px; height: 17px; accent-color: var(--teal); }
+    .total-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); font-size: 12px; }
+    .total-line b { font-size: 16px; font-variant-numeric: tabular-nums; }
+
+    .goal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .goal-list { display: grid; gap: 12px; }
+    .goal-card { overflow: hidden; }
+    .goal-card-head { padding: 15px 18px; border-bottom: 1px solid var(--line); background: rgba(7,17,28,.22); }
+    .goal-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 13px; align-items: center; }
+    .priority-chip { min-width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--line-strong); color: var(--muted); background: rgba(255,255,255,.025); font-size: 11px; font-weight: 800; }
+    .goal-name { min-width: 0; }
+    .goal-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .goal-name h3 { margin: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+    .status-chip { display: inline-flex; align-items: center; min-height: 22px; border-radius: 999px; padding: 3px 8px; font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .status-active { color: #16221f; background: var(--teal); }
+    .status-queued { color: var(--yellow); background: rgba(242,204,96,.11); border: 1px solid rgba(242,204,96,.26); }
+    .status-shared { color: var(--blue); background: rgba(105,169,255,.11); border: 1px solid rgba(105,169,255,.26); }
+    .status-complete { color: var(--text); background: rgba(255,255,255,.09); border: 1px solid var(--line); }
+    .goal-sub { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .goal-actions { display: flex; align-items: center; gap: 5px; }
+    .goal-stats { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(90px, .6fr)); gap: 16px; align-items: center; margin-top: 15px; }
+    .goal-progress-text { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+    .goal-progress { height: 8px; overflow: hidden; border-radius: 999px; background: #091522; }
+    .goal-progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--teal), #8ce4ca); }
+    .goal-stat label { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
+    .goal-stat b { display: block; margin-top: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .goal-cube-scene { --cube-depth: 300px; --cube-depth-neg: -300px; position: relative; overflow: hidden; min-height: 250px; perspective: 1500px; perspective-origin: 50% 46%; touch-action: pan-y; cursor: grab; transition: height .4s cubic-bezier(.2,.75,.2,1); background: rgba(7,17,28,.24); }
+    .goal-cube-rotator { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; transition: transform .62s cubic-bezier(.2,.72,.18,1); }
+    .goal-cube-scene.is-dragging { cursor: grabbing; }
+    .goal-cube-scene.is-dragging .goal-cube-rotator { transition: none; }
+    .goal-face { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 18px; overflow: hidden; pointer-events: none; backface-visibility: hidden; transform-style: preserve-3d; background: linear-gradient(145deg, rgba(18,36,52,.99), rgba(10,25,38,.99)); box-shadow: inset 0 0 0 1px rgba(51,80,100,.54), inset 22px 0 38px -35px rgba(255,255,255,.26), inset -24px 0 40px -36px rgba(0,0,0,.9); }
+    .goal-face[data-goal-face="0"] { transform: rotateY(0deg) translateZ(var(--cube-depth)); }
+    .goal-face[data-goal-face="1"] { transform: rotateY(90deg) translateZ(var(--cube-depth)); }
+    .goal-face[data-goal-face="2"] { transform: rotateY(180deg) translateZ(var(--cube-depth)); }
+    .goal-face[data-goal-face="3"] { transform: rotateY(-90deg) translateZ(var(--cube-depth)); }
+    .goal-face.is-active { pointer-events: auto; }
+    .face-heading { display: flex; justify-content: space-between; align-items: start; gap: 14px; margin-bottom: 15px; }
+    .face-heading p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .goal-cube-nav { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); background: rgba(7,17,28,.36); }
+    .cube-steps { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; }
+    .cube-step { min-height: 32px; border: 1px solid transparent; border-radius: 8px; padding: 5px 7px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .cube-step:hover { color: var(--text); background: rgba(255,255,255,.035); }
+    .cube-step.active { border-color: rgba(245,166,107,.32); background: rgba(245,166,107,.1); color: var(--accent-2); }
+    .guidance { margin-top: 14px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(105,169,255,.055); color: var(--muted); font-size: 11px; }
+    .guidance strong { display: block; margin-bottom: 3px; color: var(--text); font-size: 12px; }
+    .guidance.warning { border-color: rgba(242,204,96,.3); background: rgba(242,204,96,.055); }
+    .guidance.good-state { border-color: rgba(81,214,179,.25); background: rgba(81,214,179,.05); }
+    .field-explainer { margin: 6px 0 0; color: var(--faint); font-size: 10px; line-height: 1.45; }
+    .choice-panel { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.018); }
+    .choice-panel + .choice-panel { margin-top: 11px; }
+    .choice-title { display: flex; align-items: start; gap: 9px; }
+    .choice-title strong { display: block; font-size: 12px; }
+    .choice-title span { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .face-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .allocation-editor { display: grid; gap: 8px; margin-top: 15px; }
+    .allocation-row { display: grid; grid-template-columns: minmax(120px, 1fr) 110px minmax(90px, .65fr); gap: 10px; align-items: center; }
+    .allocation-row .bucket-identity { font-size: 12px; }
+    .allocation-result { color: var(--muted); text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .editor-note { margin: 11px 0 0; padding: 10px 12px; border-left: 2px solid var(--blue); color: var(--muted); background: rgba(105,169,255,.05); font-size: 11px; }
+
+    .timeline-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 18px; align-items: start; }
+    .timeline { position: relative; display: grid; gap: 0; padding-left: 4px; }
+    .timeline::before { content: ""; position: absolute; left: 15px; top: 17px; bottom: 17px; width: 1px; background: var(--line-strong); }
+    .timeline-event { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; padding: 12px 0; }
+    .event-dot { z-index: 1; width: 23px; height: 23px; display: grid; place-items: center; margin-left: 0; border: 4px solid var(--panel); border-radius: 50%; background: var(--blue); color: #07111c; font-size: 8px; font-weight: 900; }
+    .event-dot.complete { background: var(--teal); }
+    .event-dot.rollover { background: var(--accent); }
+    .event-dot.cost { background: var(--yellow); }
+    .event-dot.inflow { background: var(--purple); }
+    .event-title { margin-bottom: 2px; font-size: 12px; font-weight: 720; }
+    .event-copy { color: var(--muted); font-size: 11px; }
+    .event-date { color: var(--muted); text-align: right; font-size: 10px; white-space: nowrap; }
+    .queue-list { display: grid; gap: 8px; }
+    .queue-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .queue-row:last-child { border-bottom: 0; }
+    .queue-number { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.045); color: var(--muted); font-size: 10px; font-weight: 800; }
+    .queue-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 680; }
+    .queue-eta { color: var(--muted); font-size: 10px; text-align: right; }
+    .stage-toolbar { display: grid; grid-template-columns: auto minmax(200px,1fr) auto; gap: 10px; align-items: end; margin-bottom: 15px; }
+    .stage-toolbar .field { margin: 0; }
+    .stage-summary { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 1px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--line); }
+    .stage-summary > div { padding: 12px; background: rgba(7,17,28,.56); }
+    .stage-summary label { display: block; color: var(--muted); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+    .stage-summary b { display: block; margin-top: 3px; font-size: 16px; font-variant-numeric: tabular-nums; }
+    .stage-insight { margin-bottom: 14px; padding: 12px 13px; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: rgba(245,166,107,.065); color: var(--muted); font-size: 11px; }
+    .stage-insight strong { color: var(--text); }
+    .stage-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+    .stage-panel h3 { margin-bottom: 8px; }
+    .stage-table-wrap { overflow-x: auto; }
+    .stage-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .stage-table th, .stage-table td { padding: 8px 7px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; white-space: nowrap; }
+    .stage-table th { color: var(--muted); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+    .stage-table th:first-child, .stage-table td:first-child { text-align: left; }
+    .stage-table tr:last-child td { border-bottom: 0; }
+    .delta-up { color: var(--teal); }
+    .delta-down { color: var(--red); }
+
+    .tools-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .tool-card { padding: 18px; }
+    .tool-card p { min-height: 48px; color: var(--muted); font-size: 11px; }
+    .file-input { position: absolute; opacity: 0; pointer-events: none; }
+    .notice { display: none; position: fixed; right: 22px; bottom: 22px; z-index: 50; max-width: min(360px, calc(100vw - 44px)); padding: 12px 15px; border: 1px solid rgba(81,214,179,.35); border-radius: 12px; background: #102638; color: var(--text); box-shadow: var(--shadow); font-size: 12px; }
+    .notice.show { display: block; animation: toast .2s ease; }
+    @keyframes toast { from { opacity: 0; transform: translateY(8px); } }
+    .empty { padding: 22px; border: 1px dashed var(--line-strong); border-radius: 14px; color: var(--muted); text-align: center; font-size: 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 1050px) {
+      .dashboard-grid, .timeline-layout { grid-template-columns: 1fr; }
+      .cash-grid { grid-template-columns: 1fr; }
+      .goal-stats { grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(80px, .6fr)); }
+    }
+    @media (max-width: 780px) {
+      .topbar { position: static; flex-wrap: wrap; gap: 10px 14px; }
+      .nav-tabs { order: 3; width: 100%; overflow-x: auto; }
+      .save-state { margin-left: auto; }
+      main { padding-top: 24px; }
+      .page-heading { align-items: start; flex-direction: column; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .bucket-row { grid-template-columns: minmax(120px,1fr) 100px 34px 34px; }
+      .bucket-row .mini-track { display: none; }
+      .goal-stats { grid-template-columns: 1fr 1fr 1fr; }
+      .goal-stats > :first-child { grid-column: 1 / -1; }
+      .stage-columns { grid-template-columns: 1fr; }
+      .stage-summary { grid-template-columns: 1fr 1fr; }
+      .form-grid.three { grid-template-columns: 1fr 1fr; }
+      .tools-grid { grid-template-columns: 1fr; }
+      .tool-card p { min-height: 0; }
+    }
+    @media (max-width: 560px) {
+      .topbar { padding-inline: 14px; }
+      .brand-sub { display: none; }
+      .save-state span:last-child { display: none; }
+      main { padding-inline: 12px; }
+      .priority-banner { grid-template-columns: auto minmax(0,1fr); }
+      .priority-banner .switch { grid-column: 2; }
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .metric { padding: 13px; }
+      .bucket-row { grid-template-columns: minmax(0,1fr) 92px 34px 34px; gap: 7px; }
+      .goal-card-head { padding: 13px 14px; }
+      .goal-top { grid-template-columns: auto minmax(0,1fr); }
+      .goal-actions { grid-column: 2; }
+      .goal-stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .goal-stats > :first-child { grid-column: 1 / -1; }
+      .goal-face { padding: 14px; }
+      .goal-cube-nav { grid-template-columns: 1fr 1fr; padding: 9px 10px; }
+      .cube-steps { grid-column: 1 / -1; }
+      .goal-cube-nav > .btn { width: 100%; }
+      .stage-toolbar { grid-template-columns: 1fr 1fr; }
+      .stage-toolbar .field { grid-column: 1 / -1; grid-row: 1; }
+      .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+      .allocation-row { grid-template-columns: minmax(0,1fr) 92px; }
+      .allocation-result { grid-column: 1 / -1; text-align: left; padding-left: 19px; }
+      .line-row { grid-template-columns: 24px minmax(90px,1fr) 94px 34px; gap: 6px; }
+      .timeline-event { grid-template-columns: 28px minmax(0,1fr); }
+      .event-date { grid-column: 2; text-align: left; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #f5f7f8; --panel-3: #edf1f3; --text: #17212a; --muted: #54636b; --faint: #6d7a80; --line: #dbe2e6; --line-strong: #c3cfd5; }
+      body { background: #fff; }
+      .topbar, .button-row, .btn, .switch, .goal-cube-nav { display: none !important; }
+      main { width: 100%; padding: 0; }
+      .view { display: block !important; page-break-after: always; }
+      .card { box-shadow: none; background: #fff; break-inside: avoid; }
+      .goal-cube-scene { height: auto !important; min-height: 0; overflow: visible; }
+      .goal-cube-rotator { height: auto !important; transform: none !important; }
+      .goal-face[data-goal-face] { display: none; position: static; height: auto !important; overflow: visible; opacity: 1; visibility: visible; transform: none !important; }
+      .goal-face.is-active { display: block; }
+    }
+  </style>
 </head>
 <body>
-<h1 id="docTitle" contenteditable="true" spellcheck="false" title="Click to rename — handy when making a copy for someone else">Budget Planner</h1>
-<div class="sub">Weekly surplus = your attribute points. Spend every point. Plan raises. Goals fund in priority order and spill over automatically when one finishes. Click the title or any bucket name to rename.</div>
-<div class="toolbar">
-  <button onclick="saveAs()">Save As — download copy</button>
-  <button class="ghost" onclick="resetAll()">Reset to defaults</button>
-  <span class="tag">autosaves on THIS device · Save As bakes your data into a file for OneDrive / other devices / sharing</span>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand" aria-label="Waypoint Budget Planner">
+      <div class="brand-mark" aria-hidden="true">W</div>
+      <div>
+        <div class="brand-name">Waypoint</div>
+        <div class="brand-sub">Budget planner</div>
+      </div>
+    </div>
+    <nav class="nav-tabs" aria-label="Planner sections">
+      <button class="nav-tab active" data-view="overview" onclick="showView('overview')">Overview</button>
+      <button class="nav-tab" data-view="cashflow" onclick="showView('cashflow')">Cash flow</button>
+      <button class="nav-tab" data-view="goals" onclick="showView('goals')">Goals</button>
+      <button class="nav-tab" data-view="timeline" onclick="showView('timeline')">Futuregram</button>
+      <button class="nav-tab" data-view="tools" onclick="showView('tools')">Save &amp; export</button>
+    </nav>
+    <div class="save-state" aria-live="polite"><span class="save-dot"></span><span id="saveLabel">Saved locally</span></div>
+  </header>
+
+  <main>
+    <section id="view-overview" class="view active" aria-labelledby="overviewTitle">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Your plan right now</p>
+          <h1 id="overviewTitle">Give every extra dollar a job.</h1>
+          <p class="lede">Build your weekly Attribute Pool, split it into buckets, and let the goal queue handle what happens next.</p>
+        </div>
+        <div class="button-row">
+          <button class="btn" onclick="showView('cashflow')">Edit cash flow</button>
+          <button class="btn primary" onclick="showView('goals')">Tune goals</button>
+        </div>
+      </div>
+
+      <div id="priorityBanner"></div>
+      <div id="summaryMetrics" class="metric-grid" aria-label="Financial summary"></div>
+
+      <div class="dashboard-grid" style="margin-top:18px">
+        <div class="stack">
+          <section class="card pool-figure" aria-labelledby="poolTitle">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Banked pool</p>
+                <h2 id="poolTitle">Weekly Attribute Points</h2>
+              </div>
+              <button class="btn" id="bankRemainderButton" onclick="bankRemainder()">Send remainder to Savings</button>
+            </div>
+            <div id="poolContent"></div>
+          </section>
+
+          <section class="card card-pad" aria-labelledby="bucketTitle">
+            <div class="card-head">
+              <div>
+                <h2 id="bucketTitle">Bucket allocation</h2>
+                <p>Planned dollars per week. Reserves refill before a bucket begins funding goals.</p>
+              </div>
+              <button class="btn" onclick="addBucket()">+ Add bucket</button>
+            </div>
+            <div id="bucketList" class="bucket-list"></div>
+          </section>
+        </div>
+
+        <aside class="stack">
+          <section class="card card-pad" aria-labelledby="nextTitle">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Funding now</p>
+                <h2 id="nextTitle">Where this week's AP goes</h2>
+              </div>
+            </div>
+            <div id="fundingNow"></div>
+          </section>
+
+          <section class="card card-pad" aria-labelledby="alertTitle">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Only what matters</p>
+                <h2 id="alertTitle">Plan signals</h2>
+              </div>
+            </div>
+            <div id="alertList" class="alert-list"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section id="view-cashflow" class="view" aria-labelledby="cashflowTitle">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Step 1</p>
+          <h1 id="cashflowTitle">Set the money coming in and going out.</h1>
+          <p class="lede">Only the true leftover becomes AP. Turn recurring expenses off to test a cut without deleting anything.</p>
+        </div>
+      </div>
+      <div class="cash-grid">
+        <section class="card card-pad" aria-labelledby="incomeTitle">
+          <div class="card-head"><div><h2 id="incomeTitle">Income</h2><p>Weekly pay is converted to a monthly planning view.</p></div></div>
+          <div id="incomeForm"></div>
+        </section>
+        <section class="card card-pad" aria-labelledby="cashSummaryTitle">
+          <div class="card-head"><div><h2 id="cashSummaryTitle">Cash-flow summary</h2><p>These numbers feed the Attribute Pool.</p></div></div>
+          <div id="cashSummary"></div>
+        </section>
+        <section class="card card-pad" aria-labelledby="billsTitle">
+          <div class="card-head">
+            <div><h2 id="billsTitle">Fixed bills</h2><p>Long-term commitments such as housing and utilities.</p></div>
+            <button class="btn" onclick="addExpense('bills')">+ Add</button>
+          </div>
+          <div id="billsList" class="line-list"></div>
+        </section>
+        <section class="card card-pad" aria-labelledby="recurringTitle">
+          <div class="card-head">
+            <div><h2 id="recurringTitle">Recurring &amp; removable</h2><p>Untick an item to simulate canceling or pausing it.</p></div>
+            <button class="btn" onclick="addExpense('recurring')">+ Add</button>
+          </div>
+          <div id="recurringList" class="line-list"></div>
+        </section>
+        <section class="card card-pad" style="grid-column:1/-1" aria-labelledby="lenderTitle">
+          <div class="card-head">
+            <div><h2 id="lenderTitle">Lender / DTI mode</h2><p>Optional. Compare current debt payments with the projected costs created by your goals.</p></div>
+            <label class="switch"><input type="checkbox" id="lenderToggle" onchange="setLenderMode(this.checked)"><span class="switch-track"></span><span class="sr-only">Toggle Lender mode</span></label>
+          </div>
+          <div id="lenderContent"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="view-goals" class="view" aria-labelledby="goalsTitle">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Step 2</p>
+          <h1 id="goalsTitle">Build the queue. Keep the long game moving.</h1>
+          <p class="lede">Priority goals take turns using their own bucket mix. Shared goals can keep receiving the background capacity.</p>
+        </div>
+        <button class="btn primary" onclick="addGoal()">+ Add goal</button>
+      </div>
+      <div id="goalModePanel"></div>
+      <div class="goal-toolbar">
+        <p class="tiny" id="goalCount"></p>
+        <div class="tiny">Use the arrows to change strict priority order.</div>
+      </div>
+      <div id="goalList" class="goal-list"></div>
+    </section>
+
+    <section id="view-timeline" class="view" aria-labelledby="timelineTitle">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Futuregram</p>
+          <h1 id="timelineTitle">See the handoffs before they happen.</h1>
+          <p class="lede">The projection updates when income, bills, buckets, priority, saved amounts, or lifecycle costs change.</p>
+        </div>
+        <button class="btn" onclick="window.print()">Print plan</button>
+      </div>
+      <section class="card card-pad" style="margin-bottom:18px" aria-labelledby="stageInspectorTitle">
+        <div class="card-head">
+          <div><p class="eyebrow">Snowball view</p><h2 id="stageInspectorTitle">Future Stage Inspector</h2><p>See where every bucket and goal sits immediately after a milestone changes the plan.</p></div>
+        </div>
+        <div id="futureStageInspector"></div>
+      </section>
+      <div class="timeline-layout">
+        <section class="card card-pad" aria-labelledby="eventsTitle">
+          <div class="card-head"><div><h2 id="eventsTitle">Projected milestones</h2><p>Weekly simulation, capped at 50 years.</p></div></div>
+          <div id="timelineEvents" class="timeline"></div>
+        </section>
+        <aside class="stack">
+          <section class="card card-pad" aria-labelledby="queueTitle">
+            <div class="card-head"><div><h2 id="queueTitle">Goal queue</h2><p>Current ordering and projected completion.</p></div></div>
+            <div id="queueList" class="queue-list"></div>
+          </section>
+          <section class="card card-pad" aria-labelledby="steadyTitle">
+            <div class="card-head"><div><h2 id="steadyTitle">Steady-state preview</h2><p>Monthly costs added after every unfinished goal is reached.</p></div></div>
+            <div id="steadyState"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section id="view-tools" class="view" aria-labelledby="toolsTitle">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Portable by design</p>
+          <h1 id="toolsTitle">Keep a copy you control.</h1>
+          <p class="lede">Your edits autosave on this device. Create a self-contained planner copy or move the data as JSON.</p>
+        </div>
+      </div>
+      <div class="tools-grid">
+        <section class="card tool-card"><h2>Save planner copy</h2><p>Downloads a new standalone HTML file with your current plan baked into it.</p><button class="btn primary" onclick="downloadSnapshot()">Download HTML snapshot</button></section>
+        <section class="card tool-card"><h2>Export data</h2><p>Downloads a small JSON backup that can be imported into another copy.</p><button class="btn" onclick="exportJSON()">Download JSON</button></section>
+        <section class="card tool-card"><h2>Import data</h2><p>Load a Waypoint JSON backup. The imported plan replaces the current data after confirmation.</p><label class="btn" for="importFile">Choose JSON file</label><input class="file-input" type="file" id="importFile" accept="application/json,.json" onchange="importJSON(this.files[0]);this.value='' "></section>
+        <section class="card tool-card"><h2>Print / PDF</h2><p>Print a clean view of the plan or use your browser's Save as PDF option.</p><button class="btn" onclick="window.print()">Print plan</button></section>
+        <section class="card tool-card"><h2>Start fresh</h2><p>Reset to the built-in starter plan. Download a snapshot first if you may want this version later.</p><button class="btn danger" onclick="resetPlanner()">Reset planner</button></section>
+      </div>
+    </section>
+  </main>
 </div>
 
-<div class="grid">
+<div id="notice" class="notice" role="status" aria-live="polite"></div>
 
-  <!-- 1 INCOME -->
-  <div class="card">
-    <h2>1 · Income</h2>
-    <div class="row"><label>Hourly rate ($/hr)</label><input type="number" id="rate" step="0.5"></div>
-    <div class="row"><label>Hours / week</label><input type="number" id="hours"></div>
-    <div class="row"><label>Side rate ($/hr)</label><input type="number" id="sideRate" step="0.5"></div>
-    <div class="row"><label>Side hours / week</label><input type="number" id="sideHours"></div>
-    <div class="row"><label>Tax / deduction %</label><span style="display:flex;align-items:center;gap:6px"><span class="switch"><input type="checkbox" id="dedAuto"><label for="dedAuto">auto</label></span><input type="number" id="ded" step="0.1"></span></div>
-    <div class="hint">auto = rough US federal estimate (2026 single-filer brackets + FICA) from the pay above — just type a % to take over and fine-tune for your state / situation.</div>
-    <div class="stat"><span>Gross weekly pay</span><b id="grossWeekly">—</b></div>
-    <div class="stat"><span>Gross monthly pay</span><b id="grossMonthly">—</b></div>
-    <div class="stat"><span>Net weekly pay</span><b id="netWeekly">—</b></div>
-    <div class="stat"><span>Net monthly pay</span><b id="netMonthly">—</b></div>
-  </div>
-
-  <!-- 2 BILLS -->
-  <div class="card">
-    <h2>2 · Bills — fixed <button onclick="addRow('bills')">+ add</button></h2>
-    <div class="hint">Long-term commitments: rent/mortgage, utilities, essentials. These don't go away easily.</div>
-    <div class="scroll"><table id="billsTable"><thead><tr><th>Bill</th><th>$/month</th><th></th></tr></thead><tbody></tbody></table></div>
-    <div class="stat"><span>Fixed bills total</span><b id="billsTotal">—</b></div>
-  </div>
-
-  <!-- 3 RECURRING -->
-  <div class="card">
-    <h2>3 · Recurring — removable <button onclick="addRow('recurring')">+ add</button></h2>
-    <div class="hint">Subscriptions &amp; debt payments. Anything here can be cancelled or paid off — your cut-to-save list. Untick a row to <b style="color:var(--ink)">simulate</b> cancelling it: points, goals and the timeline update instantly, nothing is deleted.</div>
-    <div class="scroll"><table id="recurringTable"><thead><tr><th>Item</th><th>$/month</th><th></th></tr></thead><tbody></tbody></table></div>
-    <div class="stat"><span>Recurring total (ticked only)</span><b id="recurringTotal">—</b></div>
-    <div class="stat"><span>If you cleared this whole list you'd free up</span><b id="recurringFree" class="pts-ok">—</b></div>
-    <div class="stat"><span>Unticked (simulated cuts) — already added to your points</span><b id="recurringPaused" class="pts-ok">—</b></div>
-  </div>
-
-  <!-- 4 POINTS -->
-  <div class="card">
-    <h2>4 · Attribute Points <button onclick="addBucket()">+ add bucket</button> <span class="switch"><input type="checkbox" id="applyRaise"><label for="applyRaise">include raise</label></span></h2>
-    <div class="hint">Weekly surplus after ALL bills + recurring. Sliders move in $5 steps and stop when points run out. Click a bucket's name to rename it, × to remove it, or add more — the Goal Planner below updates automatically.</div>
-    <div class="big pts-ok" id="pointsBox">—</div>
-    <div id="buckets"></div>
-    <div class="stat"><span>Allocated</span><b id="allocTotal">—</b></div>
-    <div class="big pts-left" id="remainBox" style="font-size:22px">—</div>
-  </div>
-
-  <!-- 5 RAISE SIM -->
-  <div class="card">
-    <h2>5 · What-If: Raise Simulator <button onclick="addBucket()">+ add bucket</button></h2>
-    <div class="row"><label>New hourly rate ($/hr)</label><input type="number" id="newRate" step="0.5"></div>
-    <div class="row"><label>Extra main-job hrs/wk</label><input type="number" id="extraHours"></div>
-    <div class="row"><label>New side hrs/wk</label><input type="number" id="wSideHours"></div>
-    <div class="row"><label>New side rate ($/hr)</label><input type="number" id="wSideRate" step="0.5"></div>
-    <div class="stat"><span>New gross weekly</span><b id="wGross">—</b></div>
-    <div class="stat"><span>New gross monthly</span><b id="wGrossMo">—</b></div>
-    <div class="stat"><span>New net weekly</span><b id="wNet">—</b></div>
-    <div class="stat"><span>New net monthly</span><b id="wNetMo">—</b></div>
-    <div class="big pts-ok" id="gainBox" style="font-size:22px">—</div>
-    <div class="hint">Spend ONLY the new points:</div>
-    <div id="raiseBuckets"></div>
-    <div class="big pts-left" id="raiseRemainBox" style="font-size:20px">—</div>
-    <div class="hint">Tick "include raise" in panel 4 to preview your whole budget with the raise applied.</div>
-  </div>
-
-  <!-- 6 GOALS -->
-  <div class="card full">
-    <h2>6 · Goal Planner <button onclick="addGoal()">+ add goal</button></h2>
-    <div class="hint">Goals fund in <b style="color:var(--ink)">priority order</b> — #1 is first in line. Use ▲▼ to re-rank, tap ⚙ to flip a card over for its settings (target, saved, pull %). All goals share one 100% pool per bucket — inputs stop at what's available. When a goal completes, its pull % <b style="color:var(--ink)">spills over</b> to the next goal in line automatically, so you never re-juggle percentages. <b style="color:var(--ink)">Reserves:</b> give a bucket a Reserve $ target and its weekly money refills that stash FIRST — goals only see the overflow once it's full. Hit "−" to log a spend from a reserve; refilling restarts and every timeline adjusts.</div>
-    <div class="hint" id="goalRaiseNote" style="color:var(--green);font-style:normal"></div>
-    <div class="scroll"><table id="bucketSummary" style="margin:10px 0">
-      <thead><tr><th>Bucket</th><th>Weekly $</th><th>Reserve $</th><th>Balance</th><th>Status</th><th>→ Goals</th><th>Left over</th><th style="width:18%"></th></tr></thead>
-      <tbody></tbody>
-    </table></div>
-    <div class="goalgrid" id="goals"></div>
-  </div>
-
-  <!-- 7 TIMELINE -->
-  <div class="card full">
-    <h2>7 · Plan Timeline — what happens when</h2>
-    <div class="hint">Your whole plan in order: reserves filling, goals finishing, money spilling to the next priority, and what frees up at the end. Change anything above and this re-plans instantly — no manual re-juggling.</div>
-    <ol class="timeline" id="timeline"></ol>
-  </div>
-
-  <!-- CHART + DEBT -->
-  <div class="card">
-    <h2>Money Map ($/month)</h2>
-    <canvas id="mapChart"></canvas>
-  </div>
-  <div class="card">
-    <h2>Debt Snapshot <button onclick="addDebt()">+ add</button></h2>
-    <div class="scroll"><table id="debtTable"><thead><tr><th>Debt</th><th>Balance</th><th>Limit</th><th>Util</th><th>Pay/mo</th><th>Months</th><th></th></tr></thead><tbody></tbody></table></div>
-    <div class="stat"><span>Total debt</span><b id="debtTotal">—</b></div>
-    <div class="stat"><span>Overall utilization</span><b id="debtUtil">—</b></div>
-    <div class="stat"><span>Months to debt-free*</span><b id="debtMonths">—</b></div>
-    <div class="hint">*balance ÷ payment, interest not included — a floor, not a promise.</div>
-  </div>
-
-</div>
-
-<script id="savedState" type="application/json"></script>
-<script>
-const VERSION = 7;
-let BUCKET_NAMES = ["Vehicle","Personal / Fun","Taxes","Media","Savings"];
-let BUCKET_SHORT = ["Veh","Fun","Tax","Media","Sav"];
-const BUCKET_COLORS = ["#5b9bff","#f2762e","#a78bfa","#ffc94d","#3ddc84","#ff5c9d","#4dd0e1","#c0ca33"];
-const bColor = i => BUCKET_COLORS[i % BUCKET_COLORS.length];
-const esc = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
-const DEFAULTS = {
-  v:VERSION, ts:0,
-  title:"Budget Planner",
-  bucketNames:["Vehicle","Personal / Fun","Taxes","Media","Savings"],
-  rate:20, hours:40, sideRate:0, sideHours:0, ded:20, dedAuto:true, dedManual:null,
-  bills:[["Rent / Mortgage",0],["Electric",0],["Heat",0],["Internet",0],["Food",0]],
-  recurring:[["Streaming",0],["Music",0],["Phone",0],["Gym",0]],
-  alloc:[0,0,0,0,0],
-  newRate:25, extraHours:0, wSideHours:0, wSideRate:0,
-  raiseAlloc:[0,0,0,0,0],
-  reserveTarget:[0,0,0,0,0], reserveBal:[0,0,0,0,0],
-  goals:[
-    {name:"Emergency Fund",target:1000,saved:0,pulls:[0,0,0,0,0]}
+<script id="initialState" type="application/json">
+{
+  "version": 1,
+  "priorityMode": true,
+  "lenderMode": false,
+  "income": { "hourlyRate": 35, "hoursPerWeek": 40, "sideMonthly": 0, "deductionPercent": 23.9 },
+  "bills": [
+    { "id": "bill-housing", "name": "Rent / Mortgage", "amount": 1600, "active": true },
+    { "id": "bill-electric", "name": "Electric", "amount": 0, "active": true },
+    { "id": "bill-heat", "name": "Heat", "amount": 0, "active": true },
+    { "id": "bill-internet", "name": "Internet", "amount": 98, "active": true },
+    { "id": "bill-food", "name": "Food", "amount": 50, "active": true },
+    { "id": "bill-health", "name": "Home Health", "amount": 100, "active": true }
   ],
-  debts:[["Example debt",0,0,0]]
-};
-// make any loaded state internally consistent with its bucket count
-function normalize(st){
-  if(!Array.isArray(st.bucketNames) || !st.bucketNames.length) st.bucketNames = ["Bucket 1"];
-  const n = st.bucketNames.length;
-  const fit = a => { a = Array.isArray(a) ? a.slice(0,n) : []; while(a.length<n) a.push(0); return a; };
-  st.alloc = fit(st.alloc); st.raiseAlloc = fit(st.raiseAlloc);
-  st.reserveTarget = fit(st.reserveTarget); st.reserveBal = fit(st.reserveBal);
-  (st.goals||[]).forEach(g=> g.pulls = fit(g.pulls));
-  return st;
+  "recurring": [
+    { "id": "rec-google", "name": "Google", "amount": 28.5, "active": true },
+    { "id": "rec-spotify", "name": "Spotify", "amount": 18.99, "active": true },
+    { "id": "rec-prime", "name": "Amazon Prime", "amount": 7.99, "active": true },
+    { "id": "rec-gym", "name": "Gym", "amount": 25, "active": true },
+    { "id": "rec-ezpass", "name": "E-Z Pass", "amount": 15, "active": true },
+    { "id": "rec-paypal", "name": "PayPal", "amount": 50, "active": true },
+    { "id": "rec-wash", "name": "Car Wash", "amount": 40, "active": true }
+  ],
+  "buckets": [
+    { "id": "bucket-vehicle", "name": "Vehicle", "weekly": 170, "reserveTarget": 0, "reserveBalance": 359 },
+    { "id": "bucket-fun", "name": "Personal / Fun", "weekly": 170, "reserveTarget": 0, "reserveBalance": 170 },
+    { "id": "bucket-tax", "name": "Taxes", "weekly": 20, "reserveTarget": 0, "reserveBalance": 270 },
+    { "id": "bucket-media", "name": "Media", "weekly": 40, "reserveTarget": 0, "reserveBalance": 200 },
+    { "id": "bucket-savings", "name": "Savings", "weekly": 195, "reserveTarget": 0, "reserveBalance": 261 }
+  ],
+  "goals": [
+    { "id": "goal-vehicle", "name": "Vehicle Down Payment", "type": "one-time", "funding": "priority", "target": 12000, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [100,0,0,0,0] },
+    { "id": "goal-home", "name": "Home / Moving", "type": "ongoing", "funding": "priority", "target": 60000, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [0,0,0,0,100] },
+    { "id": "goal-office", "name": "Computer / Office", "type": "one-time", "funding": "shared", "target": 12000, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [0,0,0,100,0] },
+    { "id": "goal-cruise", "name": "Cruise", "type": "one-time", "funding": "shared", "target": 1250, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [0,100,0,0,0] }
+  ],
+  "debts": [
+    { "id": "debt-example", "name": "Example debt", "balance": 0, "payment": 0, "active": true }
+  ]
 }
-// bring older saves forward instead of throwing them away
-function migrate(st){
-  if(!st || typeof st!=="object") return null;
-  if(st.v===6){ st.v=7; st.dedAuto=false; } // v6 users typed their own % — keep it
-  if(st.v!==VERSION) return null;
-  if(st.dedManual===undefined) st.dedManual = st.dedAuto ? null : (+st.ded||0);
-  return st;
-}
-function load(){
-  // newest wins between the state baked into this file (Save As) and this device's autosave
-  let emb=null, loc=null;
-  try{ emb = JSON.parse(document.getElementById("savedState").textContent); }catch(e){}
-  try{ const s = localStorage.getItem("budgetPlanner"); if(s) loc = JSON.parse(s); }catch(e){}
-  const pick = [emb,loc].map(migrate).filter(Boolean).sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
-  return normalize(pick ? JSON.parse(JSON.stringify(pick)) : JSON.parse(JSON.stringify(DEFAULTS)));
-}
-function save(){ S.ts = Date.now(); try{ localStorage.setItem("budgetPlanner", JSON.stringify(S)); }catch(e){} }
-function refreshNames(){
-  BUCKET_NAMES = S.bucketNames;
-  BUCKET_SHORT = S.bucketNames.map(n=>(n.trim().split(/[\s\/]+/)[0]||"?").slice(0,6));
-}
-function applyTitle(){
-  const t = $("docTitle");
-  t.textContent = S.title || "Budget Planner";
-  document.title = S.title || "Budget Planner";
-}
-function renameBucket(i, name){
-  S.bucketNames[i] = name.trim() || S.bucketNames[i];
-  refreshNames(); buildStatic(); render();
-}
-function addBucket(){
-  S.bucketNames.push("New bucket");
-  S.alloc.push(0); S.raiseAlloc.push(0); S.reserveTarget.push(0); S.reserveBal.push(0);
-  S.goals.forEach(g=> g.pulls.push(0));
-  refreshNames(); buildStatic(); render();
-}
-function removeBucket(i){
-  if(S.bucketNames.length<=1){ alert("You need at least one bucket."); return; }
-  if(!confirm('Remove the "'+S.bucketNames[i]+'" bucket? Its allocation, reserve, and every goal\'s pull % for it will be deleted.')) return;
-  S.bucketNames.splice(i,1); S.alloc.splice(i,1); S.raiseAlloc.splice(i,1);
-  S.reserveTarget.splice(i,1); S.reserveBal.splice(i,1);
-  S.goals.forEach(g=> g.pulls.splice(i,1));
-  refreshNames(); buildStatic(); render();
-}
-function resetAll(){ if(confirm("Reset everything to the built-in defaults? (Great for handing someone a fresh template)")){ S = JSON.parse(JSON.stringify(DEFAULTS)); FLIPPED.clear(); refreshNames(); applyTitle(); buildStatic(); render(); } }
-// download a complete copy of this planner with the current data baked in —
-// save it to OneDrive and open it on any device; it carries your numbers with it
-function saveAs(){
-  save();
-  const doc = document.documentElement.cloneNode(true);
-  const st = doc.querySelector("#savedState");
-  st.textContent = JSON.stringify(S).replace(/</g,"\\u003c");
-  const blob = new Blob(["<!DOCTYPE html>\n"+doc.outerHTML], {type:"text/html"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = ((S.title||"Budget Planner").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_")||"Budget_Planner")+".html";
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
-}
-let S = load();
+</script>
 
-const $ = id => document.getElementById(id);
-const money = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-const money0 = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString(undefined,{maximumFractionDigits:0});
+<script>
+(function () {
+  "use strict";
 
-// ---- math ----
-// rough US federal estimate (2026 single filer): FICA + bracket tax on (gross − standard deduction).
-// A starting point so nobody has to know their tax rate — the % stays editable for fine-tuning.
-function estTaxPct(annualGross){
-  if(annualGross<=0) return 0;
-  const fica = Math.min(annualGross,184500)*0.062 + annualGross*0.0145;
-  let taxable = Math.max(0, annualGross-16100), fed = 0, prev = 0;
-  for(const [cap,r] of [[12400,.10],[50400,.12],[105700,.22],[201775,.24],[256225,.32],[640600,.35],[Infinity,.37]]){
-    if(taxable>prev) fed += (Math.min(taxable,cap)-prev)*r;
-    prev = cap;
+  const STORAGE_KEY = "waypoint-budget-planner-v1";
+  const COLORS = ["#51d6b3", "#69a9ff", "#f5a66b", "#a98df7", "#f2cc60", "#ff7a82", "#54c7ec", "#b5d56a"];
+  const GOAL_FACES = new Map();
+  let activeView = "overview";
+  let futureStageIndex = 0;
+  let toastTimer;
+
+  const $ = id => document.getElementById(id);
+  const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, num(value)));
+  const sum = values => values.reduce((total, value) => total + num(value), 0);
+  const money = value => new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: Math.abs(num(value)) < 100 ? 2 : 0 }).format(num(value));
+  const money2 = value => new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num(value));
+  const escapeHTML = value => String(value == null ? "" : value).replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"})[char]);
+  const uid = prefix => prefix + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+  const deepClone = value => JSON.parse(JSON.stringify(value));
+
+  function readInitialState() {
+    try { return JSON.parse($("initialState").textContent); }
+    catch (error) { return {}; }
   }
-  return Math.round((fica+fed)/annualGross*1000)/10;
-}
-function calc(){
-  const grossWeekly = S.rate*S.hours + S.sideRate*S.sideHours;
-  if(S.dedAuto) S.ded = estTaxPct(grossWeekly*52);
-  const keep = 1 - S.ded/100;
-  const netWeekly = grossWeekly*keep;
-  const billsMo = S.bills.reduce((a,b)=>a+(+b[1]||0),0);
-  const recurMo = S.recurring.reduce((a,b)=> a + (b[2]===0 ? 0 : (+b[1]||0)), 0);
-  const pausedMo = S.recurring.reduce((a,b)=> a + (b[2]===0 ? (+b[1]||0) : 0), 0);
-  const outMo = billsMo + recurMo;
-  const outWk = outMo*12/52;
-  const basePoints = netWeekly - outWk;
-  const newGross = S.newRate*(S.hours+S.extraHours) + S.wSideHours*S.wSideRate + S.sideRate*S.sideHours;
-  const keepNew = S.dedAuto ? 1 - estTaxPct(newGross*52)/100 : keep;
-  const newNet = newGross*keepNew;
-  const gained = Math.max(0, newNet - netWeekly);
-  const withRaise = $("applyRaise").checked;
-  const points = withRaise ? basePoints + gained : basePoints;
-  const buckets = S.alloc.map((v,i)=> withRaise ? (+v||0)+(+S.raiseAlloc[i]||0) : (+v||0));
-  const allocTotal = buckets.reduce((a,b)=>a+b,0);
-  return {grossWeekly, netWeekly, billsMo, recurMo, pausedMo, outMo, outWk, basePoints, newGross, newNet, gained, points, buckets, allocTotal, withRaise};
-}
 
-// clamped setters — never allow allocating more than what's available
-function setAlloc(i, val){
-  const c = calc();
-  const rem = c.points - c.allocTotal;            // what's still unspent right now
-  const cap = Math.max(0, (+S.alloc[i]||0) + rem); // own current value + leftover
-  S.alloc[i] = Math.round(Math.max(0, Math.min(val, cap))*100)/100;
-  render();
-}
-function setRaiseAlloc(i, val){
-  const c = calc();
-  const spent = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
-  const cap = Math.max(0, (+S.raiseAlloc[i]||0) + (c.gained - spent));
-  S.raiseAlloc[i] = Math.round(Math.max(0, Math.min(val, cap))*100)/100;
-  render();
-}
-// pulls share one 100% pool per bucket across ALL goals
-function setPull(gi, bi, val){
-  const others = S.goals.reduce((a,g,j)=> j===gi ? a : a + (+g.pulls[bi]||0), 0);
-  S.goals[gi].pulls[bi] = Math.max(0, Math.min(+val||0, 100 - others));
-  const inp = $("pull"+gi+"_"+bi);
-  if(inp) inp.value = S.goals[gi].pulls[bi]; // show the clamped value even mid-focus
-  render();
-}
-// log a spend against a bucket's reserve (refill restarts automatically)
-function spendReserve(i){
-  const amt = parseFloat(prompt("Spend how much from the "+BUCKET_NAMES[i]+" reserve?")) || 0;
-  if(amt>0){ S.reserveBal[i] = Math.max(0, (+S.reserveBal[i]||0) - amt); render(); }
-}
-// ---- plan simulation ----
-// Walks the plan forward through time: reserves fill first, goals fund by
-// priority (card order), and when a goal completes its pull % spills over to
-// the highest-priority unfinished goal. Returns per-goal timing + milestones.
-function simulatePlan(bweek, resT, resB, goals){
-  const filled = bweek.map((w,i)=> !((+resT[i]||0)>0 && (+resB[i]||0) < (+resT[i]||0)));
-  const fillT  = bweek.map((w,i)=> filled[i] ? 0 : (w>0 ? ((+resT[i]||0)-(+resB[i]||0))/w : Infinity));
-  const eff    = goals.map(g=> g.pulls.map(p=> Math.max(0,Math.min(100,+p||0))));
-  const remain = goals.map(g=> Math.max(0, (+g.target||0) - (+g.saved||0)));
-  const done   = remain.map(r=> r<=0.005);
-  const out    = goals.map((g,i)=>({ finish: done[i] ? 0 : Infinity, start: null, boosts: [], effNow: null, rateNow: 0 }));
-  const milestones = [];
-  const weeklyOf = row => row.reduce((a,p,bi)=> a + bweek[bi]*p/100, 0);
-  function spill(gi, t){                       // hand gi's pull % down the line
-    if(!eff[gi].some(p=> p>0)) return;
-    const to = done.findIndex(d=> !d);
-    // report what actually flows at time t (reserve-gated); fall back to the full
-    // claim when every source bucket is still refilling — it flows once they fill
-    const flowing = eff[gi].reduce((a,p,bi)=> a + (filled[bi] ? bweek[bi]*p/100 : 0), 0);
-    const amt = flowing>0.005 ? flowing : weeklyOf(eff[gi]);
-    if(to>=0){
-      eff[gi].forEach((p,bi)=>{ if(p>0){ eff[to][bi] = Math.min(100, eff[to][bi]+p); } });
-      if(amt>0.005){
-        out[to].boosts.push({t, from:gi, add:amt});
-        milestones.push({t, type:"spill", gi, to, amt});
+  function normalize(raw) {
+    const base = readInitialState();
+    const state = Object.assign({}, base, raw || {});
+    state.income = Object.assign({}, base.income, state.income || {});
+    ["bills", "recurring", "buckets", "goals", "debts"].forEach(key => {
+      if (!Array.isArray(state[key])) state[key] = deepClone(base[key] || []);
+    });
+    state.bills = state.bills.map(item => Object.assign({ id: uid("bill"), name: "New bill", amount: 0, active: true }, item));
+    state.recurring = state.recurring.map(item => Object.assign({ id: uid("rec"), name: "New recurring item", amount: 0, active: true }, item));
+    state.buckets = state.buckets.map(item => Object.assign({ id: uid("bucket"), name: "New bucket", weekly: 0, reserveTarget: 0, reserveBalance: 0 }, item));
+    state.goals = state.goals.map(item => {
+      const goal = Object.assign({ id: uid("goal"), name: "New goal", type: "one-time", funding: "shared", target: 1000, saved: 0, targetDate: "", postCost: 0, futureInflow: 0, inflowLabel: "Future inflow", inflowDelayWeeks: 12, inflowEnabled: false, pulls: [] }, item);
+      goal.pulls = Array.from({ length: state.buckets.length }, (_, index) => clamp(goal.pulls[index] || 0, 0, 100));
+      return goal;
+    });
+    state.debts = state.debts.map(item => Object.assign({ id: uid("debt"), name: "New debt", balance: 0, payment: 0, active: true }, item));
+    state.priorityMode = state.priorityMode !== false;
+    state.lenderMode = !!state.lenderMode;
+    state.version = 1;
+    return state;
+  }
+
+  function loadState() {
+    const baked = readInitialState();
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!saved) return normalize(baked);
+      return normalize(num(saved.savedAt) > num(baked.savedAt) ? saved : baked);
+    } catch (error) {
+      return normalize(baked);
+    }
+  }
+
+  let S = loadState();
+
+  function saveState() {
+    try {
+      S.savedAt = Date.now();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+      $("saveLabel").textContent = "Saved locally";
+    } catch (error) {
+      $("saveLabel").textContent = "Local save unavailable";
+    }
+  }
+
+  function toast(message) {
+    const notice = $("notice");
+    notice.textContent = message;
+    notice.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => notice.classList.remove("show"), 2800);
+  }
+
+  function cashflow(state, addedMonthlyCosts) {
+    const grossWeekly = num(state.income.hourlyRate) * num(state.income.hoursPerWeek) + num(state.income.sideMonthly) * 12 / 52;
+    const netWeekly = grossWeekly * (1 - clamp(state.income.deductionPercent, 0, 100) / 100);
+    const billsMonthly = sum(state.bills.filter(item => item.active !== false).map(item => item.amount));
+    const recurringMonthly = sum(state.recurring.filter(item => item.active !== false).map(item => item.amount));
+    const expensesMonthly = billsMonthly + recurringMonthly + num(addedMonthlyCosts);
+    const expenseWeekly = expensesMonthly * 12 / 52;
+    return {
+      grossWeekly,
+      grossMonthly: grossWeekly * 52 / 12,
+      netWeekly,
+      netMonthly: netWeekly * 52 / 12,
+      billsMonthly,
+      recurringMonthly,
+      expensesMonthly,
+      pool: netWeekly - expenseWeekly
+    };
+  }
+
+  function baseBucketsForPool(pool) {
+    const planned = sum(S.buckets.map(bucket => Math.max(0, num(bucket.weekly))));
+    const available = Math.max(0, num(pool));
+    const scale = planned > available && planned > 0 ? available / planned : 1;
+    return S.buckets.map(bucket => Math.max(0, num(bucket.weekly)) * scale);
+  }
+
+  function goalStatus(index, remaining) {
+    if (remaining[index] <= .005) return "complete";
+    if (!S.priorityMode) return "shared";
+    if (S.goals[index].funding === "shared") return "shared";
+    const active = S.goals.findIndex((goal, goalIndex) => goal.funding === "priority" && remaining[goalIndex] > .005);
+    return index === active ? "active" : "queued";
+  }
+
+  function allocateWeek(bucketFunds, remaining) {
+    const allocations = S.goals.map(() => S.buckets.map(() => 0));
+    const statuses = S.goals.map((goal, index) => goalStatus(index, remaining));
+
+    S.buckets.forEach((bucket, bucketIndex) => {
+      const available = Math.max(0, num(bucketFunds[bucketIndex]));
+      if (available <= .0001) return;
+
+      if (!S.priorityMode) {
+        const candidates = S.goals.map((goal, index) => ({ index, weight: remaining[index] > .005 ? clamp(goal.pulls[bucketIndex], 0, 100) : 0 }));
+        const totalWeight = sum(candidates.map(item => item.weight));
+        const scale = totalWeight > 100 ? 100 / totalWeight : 1;
+        candidates.forEach(item => { allocations[item.index][bucketIndex] = available * item.weight / 100 * scale; });
+        return;
       }
-    } else if(amt>0.005){                      // last goal in line — money returns to buckets
-      milestones.push({t, type:"free", gi, amt});
-    }
-    eff[gi] = eff[gi].map(()=>0);
-  }
-  goals.forEach((g,gi)=>{ if(done[gi]) spill(gi, 0); }); // already-met goals release their % now
-  let t = 0, guard = 0;
-  while(guard++ < 500 && !done.every(Boolean)){
-    const rate = goals.map((g,gi)=> done[gi] ? 0 : eff[gi].reduce((a,p,bi)=> a + (filled[bi] ? bweek[bi]*p/100 : 0), 0))
-                      .map(r=> r>0.005 ? r : 0); // sub-half-cent trickles count as no flow
-    goals.forEach((g,gi)=>{
-      if(done[gi]) return;
-      if(t < 1e-9){ out[gi].effNow = eff[gi].slice(); out[gi].rateNow = rate[gi]; }
-      if(rate[gi] > 0.005 && out[gi].start === null) out[gi].start = t;
-    });
-    let dt = Infinity, ev = null;
-    fillT.forEach((f,bi)=>{ if(!filled[bi] && isFinite(f) && f-t < dt){ dt = f-t; ev = {type:"fill", bi}; } });
-    goals.forEach((g,gi)=>{ if(!done[gi] && rate[gi] > 0.005 && remain[gi]/rate[gi] < dt){ dt = remain[gi]/rate[gi]; ev = {type:"goal", gi}; } });
-    if(!ev) break;                             // nothing flows and nothing will — stop
-    dt = Math.max(0, dt);
-    goals.forEach((g,gi)=>{ if(!done[gi]) remain[gi] = Math.max(0, remain[gi]-rate[gi]*dt); });
-    t += dt;
-    if(ev.type==="fill"){ filled[ev.bi] = true; milestones.push({t, type:"reserve", bi:ev.bi}); }
-    else {
-      // complete EVERY goal that hit zero this instant (ties) before spilling,
-      // so a spill never targets a goal finishing at the same moment
-      goals.forEach((g,gi)=>{ if(!done[gi] && remain[gi] <= 1e-6){ done[gi] = true; out[gi].finish = t; milestones.push({t, type:"goal", gi}); } });
-      goals.forEach((g,gi)=>{ if(done[gi] && out[gi].finish === t) spill(gi, t); });
-    }
-  }
-  // reserves that keep filling after the last goal completes still make the timeline
-  fillT.forEach((f,bi)=>{ if(!filled[bi] && isFinite(f)) milestones.push({t:f, type:"reserve", bi}); });
-  goals.forEach((g,gi)=>{ if(out[gi].effNow===null) out[gi].effNow = eff[gi].slice(); });
-  return {res: out, milestones};
-}
 
-// ---- static builders ----
-function listTable(key, tableId){
-  const tb = $(tableId).querySelector("tbody"); tb.innerHTML = "";
-  S[key].forEach((b,i)=>{
-    const tr = document.createElement("tr");
-    const off = b[2]===0;
-    if(off) tr.className = "paused";
-    // recurring rows get a live "what if I cancelled this?" toggle
-    const sim = key==="recurring"
-      ? `<input type="checkbox" title="untick to simulate cancelling this — nothing is deleted" ${off?"":"checked"}
-           onchange="S.${key}[${i}][2]=this.checked?1:0;this.closest('tr').classList.toggle('paused',!this.checked);render()"> `
-      : "";
-    tr.innerHTML = `<td style="white-space:nowrap">${sim}<input type="text" value="${esc(b[0])}" onchange="S.${key}[${i}][0]=this.value;save()"></td>
-      <td><input type="number" value="${b[1]}" step="0.01" onchange="S.${key}[${i}][1]=+this.value||0;render()"></td>
-      <td><button class="danger" onclick="S.${key}.splice(${i},1);buildStatic();render()">×</button></td>`;
-    tb.appendChild(tr);
-  });
-}
-function buildStatic(){
-  listTable("bills","billsTable");
-  listTable("recurring","recurringTable");
-  // buckets (base + raise)
-  [["buckets","setAlloc"],["raiseBuckets","setRaiseAlloc"]].forEach(([zone,setter])=>{
-    const el = $(zone); el.innerHTML = "";
-    BUCKET_NAMES.forEach((n,i)=>{
-      const d = document.createElement("div"); d.className="bucket";
-      d.innerHTML = `<div class="top"><input type="text" class="bname" value="${esc(n)}" title="rename this bucket" onchange="renameBucket(${i},this.value)"><b id="${zone}Val${i}"></b><button class="danger" title="remove this bucket" onclick="removeBucket(${i})">×</button></div>
-        <div class="barwrap"><div class="bar" id="${zone}Bar${i}" style="background:${bColor(i)}"></div></div>
-        <div class="ctrl"><input type="range" min="0" max="1500" step="5" id="${zone}Rng${i}"
-          oninput="${setter}(${i},+this.value)">
-        <input type="number" step="5" style="width:90px" id="${zone}Num${i}"
-          onchange="${setter}(${i},+this.value||0)"></div>`;
-      el.appendChild(d);
+      const activeIndex = statuses.indexOf("active");
+      let left = available;
+      if (activeIndex >= 0) {
+        const focusShare = clamp(S.goals[activeIndex].pulls[bucketIndex], 0, 100) / 100;
+        allocations[activeIndex][bucketIndex] = available * focusShare;
+        left -= allocations[activeIndex][bucketIndex];
+      }
+
+      const shared = S.goals.map((goal, index) => ({ index, weight: statuses[index] === "shared" ? clamp(goal.pulls[bucketIndex], 0, 100) : 0 })).filter(item => item.weight > 0);
+      const sharedWeight = sum(shared.map(item => item.weight));
+      if (left > .0001 && sharedWeight > 0) {
+        shared.forEach(item => { allocations[item.index][bucketIndex] += left * item.weight / sharedWeight; });
+      }
     });
-  });
-  // goals — flip cards: front = the plan, back (⚙) = the knobs
-  const g = $("goals"); g.innerHTML = "";
-  S.goals.forEach((goal,gi)=>{
-    const d = document.createElement("div"); d.className="goalwrap";
-    d.innerHTML = `<div class="flip${FLIPPED.has(gi)?" flipped":""}" id="flip${gi}">
-      <div class="face front goal">
-        <div class="head">
-          <span class="prio" title="funding priority — money focuses here first">#${gi+1}</span>
-          <b class="gname" id="gname${gi}">${esc(goal.name)}</b>
-          <button class="ord" ${gi===0?"disabled":""} title="raise priority" onclick="moveGoal(${gi},-1)">▲</button>
-          <button class="ord" ${gi===S.goals.length-1?"disabled":""} title="lower priority" onclick="moveGoal(${gi},1)">▼</button>
-          <button class="flipbtn" title="flip for settings" onclick="toggleFlip(${gi})">⚙</button>
-        </div>
-        <div class="barwrap"><div class="bar" id="goalBar${gi}" style="background:${bColor(gi)}"></div></div>
-        <div class="eta"><span>saved <b id="goalProg${gi}"></b></span><span>gets <b id="goalWk${gi}"></b>/wk</span></div>
-        <div class="eta"><span><b id="goalWeeks${gi}"></b></span><span>done <b id="goalDate${gi}"></b></span></div>
-        <div class="eta" id="goalBoost${gi}" style="color:var(--blue)"></div>
-        <div class="eta" id="goalRaise${gi}" style="color:var(--green)"></div>
-        <div class="hint" id="goalSrc${gi}"></div>
-      </div>
-      <div class="face back goal">
-        <div class="head">
-          <input type="text" value="${esc(goal.name)}" onchange="S.goals[${gi}].name=this.value;$('gname${gi}').textContent=this.value;render()">
-          <button class="danger" title="delete this goal" onclick="removeGoal(${gi})">×</button>
-          <button class="flipbtn" title="flip back" onclick="toggleFlip(${gi})">↩</button>
-        </div>
-        <div class="row"><label>Target $</label><input type="number" value="${goal.target}" onchange="S.goals[${gi}].target=+this.value||0;render()"></div>
-        <div class="row"><label>Already saved $</label><input type="number" value="${goal.saved}" onchange="S.goals[${gi}].saved=+this.value||0;render()"></div>
-        <div class="hint">% of each bucket's weekly $ — shared with the other goals, stops at what's free:</div>
-        <div class="pulls">${BUCKET_SHORT.map((n,bi)=>`<div class="pull">${esc(n)} <span id="pullFree${gi}_${bi}"></span><br>
-          <input type="number" min="0" max="100" step="5" id="pull${gi}_${bi}" value="${goal.pulls[bi]}" onchange="setPull(${gi},${bi},this.value)">%</div>`).join("")}</div>
-      </div>
-    </div>`;
-    g.appendChild(d);
-  });
-  // bucket summary rows (reserve controls live here; dynamic cells updated in render)
-  const bsb = $("bucketSummary").querySelector("tbody"); bsb.innerHTML = "";
-  BUCKET_NAMES.forEach((n,i)=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="text" style="width:112px" value="${esc(n)}" title="rename this bucket" onchange="renameBucket(${i},this.value)"></td><td id="resWk${i}"></td>
-      <td><input type="number" min="0" step="50" style="width:78px" id="resT${i}" value="${S.reserveTarget[i]}" onchange="S.reserveTarget[${i}]=+this.value||0;render()"></td>
-      <td><input type="number" min="0" step="10" style="width:78px" id="resB${i}" value="${S.reserveBal[i]}" onchange="S.reserveBal[${i}]=+this.value||0;render()"><button class="danger" style="margin-left:4px" title="log a spend" onclick="spendReserve(${i})">−</button></td>
-      <td id="resStatus${i}" style="text-align:left"></td>
-      <td id="resGoals${i}"></td><td id="resLeft${i}"></td>
-      <td><div class="barwrap"><div class="bar" id="resBar${i}" style="background:${bColor(i)}"></div></div></td>`;
-    bsb.appendChild(tr);
-  });
-  // debts
-  const dtb = $("debtTable").querySelector("tbody"); dtb.innerHTML = "";
-  S.debts.forEach((dt,i)=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td><input type="text" value="${esc(dt[0])}" style="width:88px" onchange="S.debts[${i}][0]=this.value;save()"></td>
-      <td><input type="number" style="width:68px" value="${dt[1]}" onchange="S.debts[${i}][1]=+this.value||0;render()"></td>
-      <td><input type="number" style="width:68px" value="${dt[2]}" onchange="S.debts[${i}][2]=+this.value||0;render()"></td>
-      <td id="dUtil${i}"></td>
-      <td><input type="number" style="width:60px" value="${dt[3]}" onchange="S.debts[${i}][3]=+this.value||0;render()"></td>
-      <td id="dMon${i}"></td>
-      <td><button class="danger" onclick="S.debts.splice(${i},1);buildStatic();render()">×</button></td>`;
-    dtb.appendChild(tr);
-  });
-  // income + raise inputs
-  ["rate","hours","sideRate","sideHours","newRate","extraHours","wSideHours","wSideRate"]
-   .forEach(key=>{ $(key).value = S[key]; $(key).onchange = e=>{ S[key]=+e.target.value||0; render(); }; });
-  // tax %: typing a value takes over from the auto estimate; the typed value is
-  // remembered separately so toggling auto on and off never destroys it
-  $("ded").value = S.ded;
-  $("ded").onchange = e=>{ S.ded = +e.target.value||0; S.dedManual = S.ded; S.dedAuto = false; render(); };
-  $("dedAuto").checked = !!S.dedAuto;
-  $("dedAuto").onchange = e=>{
-    S.dedAuto = e.target.checked;
-    if(!S.dedAuto && S.dedManual!=null) S.ded = S.dedManual;
+
+    return { allocations, statuses };
+  }
+
+  function simulation() {
+    const MAX_WEEKS = 2600;
+    const remaining = S.goals.map(goal => Math.max(0, num(goal.target) - num(goal.saved)));
+    const finishWeek = S.goals.map((goal, index) => remaining[index] <= .005 ? 0 : null);
+    const weeklyNow = S.goals.map(() => 0);
+    const matrixNow = S.goals.map(() => S.buckets.map(() => 0));
+    const reserves = S.buckets.map(bucket => Math.max(0, num(bucket.reserveBalance)));
+    const events = [];
+    const stages = [];
+    const scheduledInflows = [];
+    let addedMonthlyCosts = sum(S.goals.filter((goal, index) => finishWeek[index] === 0).map(goal => goal.postCost));
+
+    const incompleteCount = () => remaining.filter(value => value > .005).length;
+    const nextPriorityIndex = () => S.goals.findIndex((goal, index) => goal.funding === "priority" && remaining[index] > .005);
+
+    function captureStage(week, title, kind, triggerGoalId) {
+      const flow = cashflow(S, addedMonthlyCosts);
+      const plannedTotal = sum(S.buckets.map(bucket => Math.max(0, num(bucket.weekly))));
+      const bucketPlan = baseBucketsForPool(flow.pool);
+      const available = bucketPlan.map((amount, bucketIndex) => {
+        const target = Math.max(0, num(S.buckets[bucketIndex].reserveTarget));
+        const need = Math.max(0, target - reserves[bucketIndex]);
+        return amount - Math.min(amount, need);
+      });
+      const plan = allocateWeek(available, remaining);
+      const goalWeekly = S.goals.map((goal, goalIndex) => Math.min(sum(plan.allocations[goalIndex]), Math.max(0, remaining[goalIndex])));
+      const toGoals = S.buckets.map((bucket, bucketIndex) => sum(plan.allocations.map((row, goalIndex) => {
+        const requested = sum(row);
+        const ratio = requested > 0 ? goalWeekly[goalIndex] / requested : 0;
+        return row[bucketIndex] * ratio;
+      })));
+      const effectiveTotal = sum(bucketPlan);
+
+      stages.push({
+        week,
+        title,
+        kind,
+        triggerGoalId: triggerGoalId || null,
+        pool: flow.pool,
+        expensesMonthly: flow.expensesMonthly,
+        addedMonthlyCosts,
+        unassigned: Math.max(0, flow.pool - effectiveTotal),
+        scale: plannedTotal > 0 ? effectiveTotal / plannedTotal : 1,
+        buckets: S.buckets.map((bucket, bucketIndex) => ({
+          id: bucket.id,
+          name: bucket.name,
+          planned: Math.max(0, num(bucket.weekly)),
+          weekly: bucketPlan[bucketIndex],
+          toGoals: toGoals[bucketIndex],
+          reserveTarget: Math.max(0, num(bucket.reserveTarget)),
+          reserveBalance: reserves[bucketIndex],
+          reserveGated: Math.max(0, num(bucket.reserveTarget)) > reserves[bucketIndex] + .005
+        })),
+        goals: S.goals.map((goal, goalIndex) => ({
+          id: goal.id,
+          name: goal.name,
+          status: plan.statuses[goalIndex],
+          weekly: goalWeekly[goalIndex],
+          remaining: Math.max(0, remaining[goalIndex]),
+          funding: goal.funding
+        }))
+      });
+    }
+
+    function recordCompletion(index, week) {
+      if (finishWeek[index] !== null) return;
+      finishWeek[index] = week;
+      remaining[index] = 0;
+      events.push({ week, type: "complete", title: S.goals[index].name + " funded", copy: "The target is fully funded." });
+      if (num(S.goals[index].postCost) > 0) {
+        addedMonthlyCosts += num(S.goals[index].postCost);
+        events.push({ week, type: "cost", title: money(S.goals[index].postCost) + "/month begins", copy: "Post-goal cost from " + S.goals[index].name + " is now included in the plan." });
+      }
+      if (S.goals[index].inflowEnabled && num(S.goals[index].futureInflow) > 0) {
+        scheduledInflows.push({ week: week + Math.max(0, Math.round(num(S.goals[index].inflowDelayWeeks))), amount: num(S.goals[index].futureInflow), source: S.goals[index].inflowLabel || ("Future inflow after " + S.goals[index].name) });
+      }
+      if (S.priorityMode && S.goals[index].funding === "priority") {
+        const next = nextPriorityIndex();
+        if (next >= 0) events.push({ week, type: "rollover", title: "Priority rolls to " + S.goals[next].name, copy: "Its saved dedicated bucket mix becomes active automatically." });
+        else events.push({ week, type: "rollover", title: "Priority queue cleared", copy: "Capacity returns to Shared goals or remains available in its buckets." });
+      }
+      captureStage(week, "After " + S.goals[index].name + " completes", "goal", S.goals[index].id);
+    }
+
+    function applyInflow(event, week) {
+      let amount = event.amount;
+      const order = [];
+      S.goals.forEach((goal, index) => { if (goal.funding === "priority" && remaining[index] > .005) order.push(index); });
+      S.goals.forEach((goal, index) => { if (goal.funding === "shared" && remaining[index] > .005) order.push(index); });
+      const placements = [];
+      order.forEach(index => {
+        if (amount <= .005) return;
+        const placed = Math.min(amount, remaining[index]);
+        remaining[index] -= placed;
+        amount -= placed;
+        if (placed > .005) placements.push(S.goals[index].name + " " + money(placed));
+        if (remaining[index] <= .005) recordCompletion(index, week);
+      });
+      events.push({ week, type: "inflow", title: money(event.amount) + " future inflow lands", copy: event.source + (placements.length ? " → " + placements.join(", ") : " → held after all goals were funded") });
+      captureStage(week, "After " + event.source + " arrives", "inflow", null);
+    }
+
+    captureStage(0, "Current plan", "now", null);
+
+    for (let week = 0; week < MAX_WEEKS && (incompleteCount() > 0 || scheduledInflows.some(item => item.week >= week)); week++) {
+      scheduledInflows.filter(item => item.week === week).forEach(item => applyInflow(item, week));
+      if (incompleteCount() === 0) continue;
+
+      const flow = cashflow(S, addedMonthlyCosts);
+      const bucketPlan = baseBucketsForPool(flow.pool);
+      const available = bucketPlan.map((amount, bucketIndex) => {
+        const target = Math.max(0, num(S.buckets[bucketIndex].reserveTarget));
+        const need = Math.max(0, target - reserves[bucketIndex]);
+        const refill = Math.min(amount, need);
+        reserves[bucketIndex] += refill;
+        return amount - refill;
+      });
+
+      const weekPlan = allocateWeek(available, remaining);
+      S.goals.forEach((goal, goalIndex) => {
+        const requested = sum(weekPlan.allocations[goalIndex]);
+        const applied = Math.min(requested, remaining[goalIndex]);
+        if (week === 0) {
+          weeklyNow[goalIndex] = applied;
+          const ratio = requested > 0 ? applied / requested : 0;
+          matrixNow[goalIndex] = weekPlan.allocations[goalIndex].map(value => value * ratio);
+        }
+        remaining[goalIndex] -= applied;
+      });
+
+      S.goals.forEach((goal, goalIndex) => {
+        if (finishWeek[goalIndex] === null && remaining[goalIndex] <= .005) recordCompletion(goalIndex, week + 1);
+      });
+    }
+
+    const finalCash = cashflow(S, addedMonthlyCosts);
+    return { finishWeek, weeklyNow, matrixNow, events: events.sort((a,b) => a.week - b.week), stages, remaining, finalCash, addedMonthlyCosts };
+  }
+
+  function dateAfterWeeks(weeks) {
+    const date = new Date();
+    date.setDate(date.getDate() + Math.round(num(weeks) * 7));
+    return date;
+  }
+
+  function formatDate(date) {
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatETA(weeks) {
+    if (weeks === 0) return "Complete";
+    if (weeks == null || !Number.isFinite(weeks)) return "Not funded";
+    if (weeks > 2600) return "50+ years";
+    if (weeks < 10) return weeks.toFixed(1) + " weeks";
+    if (weeks < 104) return (weeks / 4.333).toFixed(1) + " months";
+    return (weeks / 52).toFixed(1) + " years";
+  }
+
+  function currentSnapshot() {
+    const flow = cashflow(S, 0);
+    const planned = sum(S.buckets.map(bucket => Math.max(0, num(bucket.weekly))));
+    const sim = simulation();
+    const effectiveBuckets = baseBucketsForPool(flow.pool);
+    return { flow, planned, remainder: flow.pool - planned, sim, effectiveBuckets };
+  }
+
+  function modeBannerHTML(compact) {
+    const on = S.priorityMode;
+    return '<div class="priority-banner ' + (on ? '' : 'off') + '">' +
+      '<div class="mode-icon" aria-hidden="true">' + (on ? '1→2' : '∞') + '</div>' +
+      '<div class="mode-copy"><strong>Priority Mode ' + (on ? 'on' : 'off') + '</strong><span>' +
+      (on ? 'The first unfinished Priority goal is active. Its dedicated mix rolls to the next goal when complete; Shared goals use the rest.' : 'All goals draw from the same bucket pool in parallel using their configured shares.') +
+      '</span></div>' +
+      '<label class="switch"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="setPriorityMode(this.checked)"><span class="switch-track"></span><span class="sr-only">Toggle Priority Mode</span></label>' +
+      '</div>';
+  }
+
+  function renderOverview(snapshot) {
+    $("priorityBanner").innerHTML = modeBannerHTML(false);
+    const flowClass = snapshot.flow.pool >= 0 ? "good" : "bad";
+    const assignmentClass = Math.abs(snapshot.remainder) < .01 ? "good" : snapshot.remainder < 0 ? "bad" : "warn";
+    $("summaryMetrics").innerHTML =
+      metricHTML("Net income", money(snapshot.flow.netMonthly), "per month", "") +
+      metricHTML("Monthly expenses", money(snapshot.flow.expensesMonthly), "active bills + recurring", "") +
+      metricHTML("Weekly AP", money(snapshot.flow.pool), "true leftover", flowClass) +
+      metricHTML("Unassigned", money(snapshot.remainder), snapshot.remainder < 0 ? "over plan" : "banked pool", assignmentClass);
+
+    const totalForBar = Math.max(snapshot.flow.pool, snapshot.planned, 1);
+    let segments = "";
+    let legend = "";
+    S.buckets.forEach((bucket, index) => {
+      const width = Math.max(0, num(bucket.weekly)) / totalForBar * 100;
+      segments += '<span class="allocation-segment" style="width:' + width.toFixed(3) + '%;background:' + COLORS[index % COLORS.length] + '" aria-hidden="true"></span>';
+      legend += '<span class="legend-item"><span class="swatch" style="background:' + COLORS[index % COLORS.length] + '"></span>' + escapeHTML(bucket.name) + ' ' + money(bucket.weekly) + '</span>';
+    });
+    if (snapshot.remainder > .005) {
+      segments += '<span class="allocation-segment" style="width:' + (snapshot.remainder / totalForBar * 100).toFixed(3) + '%;background:#334759" aria-hidden="true"></span>';
+      legend += '<span class="legend-item"><span class="swatch" style="background:#637984"></span>Unassigned ' + money(snapshot.remainder) + '</span>';
+    }
+    $("poolContent").innerHTML =
+      '<div class="pool-number"><b class="' + flowClass + '">' + money2(snapshot.flow.pool) + '</b><span>/ week</span></div>' +
+      '<p class="tiny">AP is shown as weekly money and assigned to buckets in $5 increments.</p>' +
+      '<div class="allocation-track" role="img" aria-label="Weekly AP allocation">' + segments + '</div>' +
+      '<div class="allocation-legend">' + legend + '</div>';
+    $("bankRemainderButton").disabled = snapshot.remainder < 4.995 || S.buckets.length === 0;
+    renderBuckets(snapshot);
+    renderFundingNow(snapshot);
+    renderAlerts(snapshot);
+  }
+
+  function metricHTML(label, value, note, className) {
+    return '<div class="metric"><div class="metric-label">' + escapeHTML(label) + '</div><div class="metric-value ' + className + '">' + value + '</div><div class="metric-note">' + escapeHTML(note) + '</div></div>';
+  }
+
+  function renderBuckets(snapshot) {
+    if (!S.buckets.length) {
+      $("bucketList").innerHTML = '<div class="empty">Add a bucket to start assigning Attribute Points.</div>';
+      return;
+    }
+    $("bucketList").innerHTML = S.buckets.map((bucket, index) => {
+      const reserveTarget = Math.max(0, num(bucket.reserveTarget));
+      const reserveBalance = Math.max(0, num(bucket.reserveBalance));
+      const reservePct = reserveTarget > 0 ? Math.min(100, reserveBalance / reserveTarget * 100) : 100;
+      const status = reserveTarget > 0 ? money(reserveBalance) + ' / ' + money(reserveTarget) + ' reserve' : 'No reserve gate';
+      return '<div class="bucket-row">' +
+        '<div class="bucket-identity"><span class="bucket-color" style="background:' + COLORS[index % COLORS.length] + '"></span><div class="bucket-title"><strong>' + escapeHTML(bucket.name) + '</strong><span>' + status + '</span></div></div>' +
+        '<div class="mini-track" aria-hidden="true"><div class="mini-fill" style="width:' + reservePct + '%;background:' + COLORS[index % COLORS.length] + '"></div></div>' +
+        '<div class="field-inline"><span class="prefix">$</span><input class="input compact" aria-label="' + escapeHTML(bucket.name) + ' weekly allocation" type="number" min="0" step="5" value="' + num(bucket.weekly) + '" onchange="setBucket(' + index + ',\'weekly\',this.value)"></div>' +
+        '<button class="btn icon" aria-label="Edit ' + escapeHTML(bucket.name) + ' bucket settings" onclick="editBucket(' + index + ')">⚙</button>' +
+        '<button class="btn icon danger" aria-label="Remove ' + escapeHTML(bucket.name) + ' bucket" onclick="removeBucket(' + index + ')">×</button>' +
+        '</div>';
+    }).join("");
+  }
+
+  function renderFundingNow(snapshot) {
+    if (!S.goals.length) {
+      $("fundingNow").innerHTML = '<div class="empty">Add a goal to see the funding path.</div>';
+      return;
+    }
+    const remaining = S.goals.map(goal => Math.max(0, num(goal.target) - num(goal.saved)));
+    const rows = S.goals.map((goal, index) => {
+      const status = goalStatus(index, remaining);
+      const weekly = snapshot.sim.weeklyNow[index];
+      if (status === "queued" || status === "complete" || weekly <= .005) return "";
+      return '<div class="queue-row"><span class="queue-number" style="color:' + COLORS[index % COLORS.length] + '">' + (index + 1) + '</span><div><div class="queue-name">' + escapeHTML(goal.name) + '</div><div class="tiny">' + statusLabel(status) + '</div></div><div class="queue-eta"><b class="mono" style="color:var(--text)">' + money2(weekly) + '</b><br>/ week</div></div>';
+    }).join("");
+    const active = S.goals.findIndex((goal, index) => goalStatus(index, remaining) === "active");
+    const queued = S.goals.filter((goal, index) => goalStatus(index, remaining) === "queued").length;
+    $("fundingNow").innerHTML = rows || '<div class="empty">No goal is receiving AP yet. Open a goal and set its bucket mix.</div>';
+    if (S.priorityMode && active >= 0) {
+      $("fundingNow").innerHTML += '<p class="editor-note">' + escapeHTML(S.goals[active].name) + ' is the active focus. ' + queued + ' Priority goal' + (queued === 1 ? '' : 's') + ' waiting behind it.</p>';
+    }
+  }
+
+  function renderAlerts(snapshot) {
+    const alerts = [];
+    if (snapshot.flow.pool < 0) alerts.push({ level: "danger", title: "Cash flow is negative", copy: money(Math.abs(snapshot.flow.pool)) + "/week must be cut or covered before goals can fund." });
+    if (snapshot.remainder < -.005) alerts.push({ level: "danger", title: "Buckets exceed the Attribute Pool", copy: "Goal funding is proportionally scaled down by " + money(Math.abs(snapshot.remainder)) + "/week." });
+    else if (snapshot.remainder > 4.995) alerts.push({ level: "warning", title: money(snapshot.remainder) + "/week is still banked", copy: "Assign it to a bucket when you are ready." });
+
+    const remaining = S.goals.map(goal => Math.max(0, num(goal.target) - num(goal.saved)));
+    if (S.priorityMode) {
+      const active = S.goals.findIndex((goal, index) => goalStatus(index, remaining) === "active");
+      if (active >= 0 && sum(S.goals[active].pulls) <= .005) alerts.push({ level: "warning", title: "Active goal has no dedicated mix", copy: S.goals[active].name + " is first in line but receives no bucket capacity." });
+    }
+    S.goals.forEach((goal, index) => {
+      const finish = snapshot.sim.finishWeek[index];
+      if (goal.targetDate && finish != null) {
+        const projected = dateAfterWeeks(finish);
+        const target = new Date(goal.targetDate + "T23:59:59");
+        if (projected > target) alerts.push({ level: "warning", title: goal.name + " may miss its date", copy: "Projected " + formatDate(projected) + "; target " + formatDate(target) + "." });
+      }
+      if (finish == null && remaining[index] > .005) alerts.push({ level: "warning", title: goal.name + " is not currently reachable", copy: "Give it a bucket share or restore enough weekly AP." });
+    });
+    if (!alerts.length) alerts.push({ level: "", title: "The plan is internally balanced", copy: "No immediate conflicts or unreachable goals were found." });
+    $("alertList").innerHTML = alerts.slice(0, 5).map(alert => '<div class="alert-item"><span class="alert-dot ' + alert.level + '"></span><div><div class="alert-title">' + escapeHTML(alert.title) + '</div><div class="alert-copy">' + escapeHTML(alert.copy) + '</div></div></div>').join("");
+  }
+
+  function renderCashflow(snapshot) {
+    $("incomeForm").innerHTML =
+      '<div class="form-grid">' +
+        fieldHTML('Hourly rate', 'number', S.income.hourlyRate, '0.50', "setIncome('hourlyRate',this.value)", '$ / hour') +
+        fieldHTML('Hours per week', 'number', S.income.hoursPerWeek, '0.5', "setIncome('hoursPerWeek',this.value)", 'hours') +
+        fieldHTML('Side income', 'number', S.income.sideMonthly, '10', "setIncome('sideMonthly',this.value)", '$ / month') +
+        fieldHTML('Tax & deduction estimate', 'number', S.income.deductionPercent, '0.1', "setIncome('deductionPercent',this.value)", '%') +
+      '</div>' +
+      '<div class="section-rule"></div>' +
+      '<div class="total-line"><span>Gross pay</span><b>' + money2(snapshot.flow.grossWeekly) + '/wk</b></div>' +
+      '<div class="total-line"><span>Estimated take-home</span><b class="good">' + money2(snapshot.flow.netWeekly) + '/wk</b></div>';
+
+    $("cashSummary").innerHTML =
+      '<div class="metric-grid" style="grid-template-columns:1fr 1fr">' +
+        metricHTML('Take-home', money(snapshot.flow.netMonthly), 'monthly', '') +
+        metricHTML('Fixed bills', money(snapshot.flow.billsMonthly), 'monthly', '') +
+        metricHTML('Recurring', money(snapshot.flow.recurringMonthly), 'monthly', '') +
+        metricHTML('Attribute Pool', money(snapshot.flow.pool), 'weekly', snapshot.flow.pool >= 0 ? 'good' : 'bad') +
+      '</div>' +
+      '<p class="editor-note">Weekly AP = take-home pay − active fixed bills − active recurring expenses. Goal lifecycle costs are applied inside Futuregram after their goals complete.</p>';
+
+    renderExpenseList("bills", $("billsList"), false);
+    renderExpenseList("recurring", $("recurringList"), true);
+    $("lenderToggle").checked = S.lenderMode;
+    renderLender(snapshot);
+  }
+
+  function fieldHTML(label, type, value, step, onchange, suffix) {
+    return '<div class="field"><label>' + escapeHTML(label) + '</label><div class="field-inline"><input class="input" type="' + type + '" min="0" step="' + step + '" value="' + escapeHTML(value) + '" onchange="' + onchange + '"><span class="suffix">' + escapeHTML(suffix) + '</span></div></div>';
+  }
+
+  function renderExpenseList(key, element, removable) {
+    const items = S[key];
+    if (!items.length) {
+      element.innerHTML = '<div class="empty">No items yet.</div>';
+      return;
+    }
+    element.innerHTML = items.map((item, index) =>
+      '<div class="line-row">' +
+        '<input class="check" type="checkbox" aria-label="Include ' + escapeHTML(item.name) + '" ' + (item.active !== false ? 'checked' : '') + ' onchange="setExpense(\'' + key + '\',' + index + ',\'active\',this.checked)">' +
+        '<input class="input compact name" aria-label="Item name" type="text" value="' + escapeHTML(item.name) + '" onchange="setExpense(\'' + key + '\',' + index + ',\'name\',this.value)">' +
+        '<div class="field-inline"><span class="prefix">$</span><input class="input compact" aria-label="Monthly amount" type="number" min="0" step="0.01" value="' + num(item.amount) + '" onchange="setExpense(\'' + key + '\',' + index + ',\'amount\',this.value)"><span class="suffix">/mo</span></div>' +
+        '<button class="btn icon danger" aria-label="Remove ' + escapeHTML(item.name) + '" onclick="removeExpense(\'' + key + '\',' + index + ')">×</button>' +
+      '</div>'
+    ).join("") + '<div class="total-line"><span>Active total</span><b>' + money(sum(items.filter(item => item.active !== false).map(item => item.amount))) + '/mo</b></div>';
+  }
+
+  function renderLender(snapshot) {
+    const content = $("lenderContent");
+    if (!S.lenderMode) {
+      content.innerHTML = '<div class="empty">Lender mode is off. Your debt details stay out of the main planner.</div>';
+      return;
+    }
+    const payments = sum(S.debts.filter(debt => debt.active !== false).map(debt => debt.payment));
+    const projectedGoalCosts = sum(S.goals.filter(goal => num(goal.saved) < num(goal.target)).map(goal => goal.postCost));
+    const currentDTI = snapshot.flow.grossMonthly > 0 ? payments / snapshot.flow.grossMonthly * 100 : 0;
+    const projectedDTI = snapshot.flow.grossMonthly > 0 ? (payments + projectedGoalCosts) / snapshot.flow.grossMonthly * 100 : 0;
+    const debtRows = S.debts.map((debt, index) =>
+      '<div class="line-row" style="grid-template-columns:28px minmax(100px,1fr) 110px 110px 38px">' +
+      '<input class="check" type="checkbox" ' + (debt.active !== false ? 'checked' : '') + ' onchange="setDebt(' + index + ',\'active\',this.checked)" aria-label="Include debt">' +
+      '<input class="input compact name" type="text" value="' + escapeHTML(debt.name) + '" onchange="setDebt(' + index + ',\'name\',this.value)" aria-label="Debt name">' +
+      '<div class="field-inline"><span class="prefix">$</span><input class="input compact" type="number" min="0" step="10" value="' + num(debt.balance) + '" onchange="setDebt(' + index + ',\'balance\',this.value)" aria-label="Debt balance"></div>' +
+      '<div class="field-inline"><span class="prefix">$</span><input class="input compact" type="number" min="0" step="1" value="' + num(debt.payment) + '" onchange="setDebt(' + index + ',\'payment\',this.value)" aria-label="Monthly debt payment"></div>' +
+      '<button class="btn icon danger" onclick="removeDebt(' + index + ')" aria-label="Remove debt">×</button></div>'
+    ).join("");
+    const currentClass = currentDTI > 43 ? "bad" : currentDTI > 36 ? "warn" : "good";
+    const projectedClass = projectedDTI > 43 ? "bad" : projectedDTI > 36 ? "warn" : "good";
+    content.innerHTML =
+      '<div class="metric-grid" style="grid-template-columns:1fr 1fr;margin-bottom:16px">' +
+      metricHTML('Current DTI', currentDTI.toFixed(1) + '%', money(payments) + '/mo debt payments', currentClass) +
+      metricHTML('Projected DTI', projectedDTI.toFixed(1) + '%', 'includes ' + money(projectedGoalCosts) + '/mo goal costs', projectedClass) +
+      '</div><div class="line-list">' + (debtRows || '<div class="empty">No debts added.</div>') + '</div>' +
+      '<div class="button-row" style="margin-top:13px"><button class="btn" onclick="addDebt()">+ Add debt</button></div>' +
+      '<p class="tiny" style="margin-top:12px">36% and 43% are reference markers only. Actual lender calculations and limits vary.</p>';
+  }
+
+  function renderGoals(snapshot) {
+    $("goalModePanel").innerHTML = modeBannerHTML(false);
+    const unfinished = S.goals.filter(goal => num(goal.saved) < num(goal.target)).length;
+    $("goalCount").textContent = S.goals.length + " goals · " + unfinished + " unfinished";
+    if (!S.goals.length) {
+      $("goalList").innerHTML = '<div class="empty">No goals yet. Add one to start the plan.</div>';
+      return;
+    }
+    const remaining = S.goals.map(goal => Math.max(0, num(goal.target) - num(goal.saved)));
+    $("goalList").innerHTML = S.goals.map((goal, index) => goalCardHTML(goal, index, snapshot, goalStatus(index, remaining))).join("");
+  }
+
+  function typeHelpText(type) {
+    return type === 'ongoing'
+      ? 'Use this when reaching the target starts ownership or upkeep, such as a vehicle or home. The savings goal still completes; any payment, insurance, or maintenance starts afterward.'
+      : 'Use this for a finish line such as a trip, emergency fund, or cash purchase. The goal ends when funded unless you deliberately add a new cost afterward.';
+  }
+
+  function deadlineGuidanceHTML(goal, index, snapshot) {
+    const remaining = Math.max(0, num(goal.target) - num(goal.saved));
+    if (remaining <= .005) return '<div class="guidance good-state"><strong>Target complete</strong>The full amount is already saved.</div>';
+    if (!goal.targetDate) return '<div class="guidance"><strong>Priority without a deadline is valid</strong>This goal can stay high in the queue without promising a date. Add a deadline only when you want the planner to calculate the pace required.</div>';
+
+    const deadline = new Date(goal.targetDate + 'T23:59:59');
+    const weeksLeft = (deadline.getTime() - Date.now()) / 604800000;
+    if (!Number.isFinite(weeksLeft) || weeksLeft <= 0) return '<div class="guidance warning"><strong>This deadline has passed</strong>Choose a future date to calculate a realistic weekly pace.</div>';
+
+    const required = remaining / weeksLeft;
+    const finish = snapshot.sim.finishWeek[index];
+    const plannedAverage = finish && finish > 0 ? remaining / finish : snapshot.sim.weeklyNow[index];
+    const projectedOnTime = finish != null && dateAfterWeeks(finish) <= deadline;
+    const gap = Math.max(0, required - plannedAverage);
+    const detail = projectedOnTime
+      ? 'The current projection is on pace. It averages about ' + money2(plannedAverage) + '/week from today.'
+      : 'The current projection averages about ' + money2(plannedAverage) + '/week. Add roughly ' + money2(gap) + '/week, move it earlier, or adjust the date.';
+    return '<div class="guidance ' + (projectedOnTime ? 'good-state' : 'warning') + '"><strong>To reach ' + escapeHTML(formatDate(deadline)) + ': average ' + money2(required) + '/week</strong>' + escapeHTML(detail) + '</div>';
+  }
+
+  function goalCardHTML(goal, index, snapshot, status) {
+    const progress = num(goal.target) > 0 ? clamp(num(goal.saved) / num(goal.target) * 100, 0, 100) : 100;
+    const finish = snapshot.sim.finishWeek[index];
+    const eta = formatETA(finish);
+    const projected = finish != null ? formatDate(dateAfterWeeks(finish)) : "—";
+    const weekly = snapshot.sim.weeklyNow[index];
+    const statusText = statusLabel(status);
+    const statusClass = "status-" + status;
+    const currentFace = clamp(Math.round(num(GOAL_FACES.get(goal.id))), 0, 3);
+    const currentStage = snapshot.sim.stages && snapshot.sim.stages[0];
+    const afterStage = snapshot.sim.stages && snapshot.sim.stages.find(stage => stage.triggerGoalId === goal.id);
+    const afterActive = afterStage && afterStage.goals.find(item => item.status === 'active');
+    const sharedAfter = afterStage && afterStage.goals.filter(item => item.status === 'shared' && item.remaining > .005 && item.weekly > .005).slice(0, 2);
+    const snowballPreview = afterStage
+      ? 'After completion, weekly AP is ' + money2(afterStage.pool) + ' (' + (afterStage.pool - currentStage.pool >= 0 ? '+' : '') + money2(afterStage.pool - currentStage.pool) + ' versus now). ' +
+        (afterActive ? afterActive.name + ' becomes the active Priority goal. ' : 'No Priority goal is active next. ') +
+        (sharedAfter.length ? 'Background funding includes ' + sharedAfter.map(item => item.name + ' at ' + money2(item.weekly) + '/week').join(' and ') + '.' : 'No unfinished Shared goal receives background funding at that stage.')
+      : status === 'complete'
+        ? 'This goal is already complete, so its current cost and rollover are already included in the Now stage.'
+        : 'The current mix does not produce a completion within the projection window. Add funding to generate an after-completion stage.';
+
+    const mixRows = S.buckets.map((bucket, bucketIndex) => {
+      const pct = clamp(goal.pulls[bucketIndex], 0, 100);
+      const effective = snapshot.effectiveBuckets[bucketIndex] || 0;
+      let result;
+      if (!S.priorityMode) result = money2(effective * pct / 100) + '/wk before the shared-pool cap';
+      else if (goal.funding === 'priority') result = money2(effective * pct / 100) + '/wk while this goal is active';
+      else result = pct > 0 ? 'weight ' + pct + ' in the capacity left after the active goal' : 'not using this bucket';
+      return '<div class="allocation-row"><div class="bucket-identity"><span class="bucket-color" style="background:' + COLORS[bucketIndex % COLORS.length] + '"></span><span>' + escapeHTML(bucket.name) + '</span></div>' +
+        '<div class="field-inline"><input class="input compact" type="number" min="0" max="100" step="5" value="' + pct + '" onchange="setPull(' + index + ',' + bucketIndex + ',this.value)" aria-label="' + escapeHTML(bucket.name) + ' allocation for ' + escapeHTML(goal.name) + '"><span class="suffix">%</span></div>' +
+        '<div class="allocation-result">' + escapeHTML(result) + '</div></div>';
+    }).join("") || '<div class="empty">Add an Attribute Point bucket before setting this funding mix.</div>';
+
+    const fundingHelp = !S.priorityMode
+      ? 'Shared Mode is on globally. Every unfinished goal uses these percentages at the same time. If a bucket totals over 100%, the planner scales the shares proportionally.'
+      : goal.funding === 'priority'
+        ? 'This is a dedicated mix. It applies only while this goal is the first unfinished Priority goal. When the goal completes, the next Priority goal activates its own saved mix.'
+        : 'This is a background mix. These values are weights for the bucket capacity left after the active Priority goal receives its dedicated portion.';
+
+    const statusExplanation = status === 'active'
+      ? 'This is the first unfinished Priority goal, so its dedicated bucket mix is in control now.'
+      : status === 'queued'
+        ? 'Its dedicated mix is saved, but it waits until every Priority goal above it is complete.'
+        : status === 'shared'
+          ? 'It can receive background funding from capacity the active Priority goal does not use.'
+          : 'It no longer draws weekly AP. Its previous capacity has already rolled forward.';
+
+    const activeAction = status === 'complete'
+      ? ''
+      : status === 'active'
+        ? '<button class="btn" disabled>Active focus</button>'
+        : '<button class="btn primary" onclick="makeGoalActive(' + index + ')">Make active</button>';
+
+    const typeHelp = typeHelpText(goal.type);
+    const deadlineGuidance = deadlineGuidanceHTML(goal, index, snapshot);
+    const weeklyCost = num(goal.postCost) * 12 / 52;
+    const costPreview = num(goal.postCost) > 0
+      ? 'When this goal completes, Futuregram subtracts about ' + money2(weeklyCost) + '/week (' + money(goal.postCost) + '/month) from future AP.'
+      : 'Leave this at $0 when completion does not create a new bill. Nothing will be subtracted from future AP.';
+    const inflowPreview = goal.inflowEnabled
+      ? (num(goal.futureInflow) > 0
+          ? (goal.inflowLabel || 'Future inflow') + ' adds ' + money(goal.futureInflow) + ' exactly ' + num(goal.inflowDelayWeeks) + ' week' + (num(goal.inflowDelayWeeks) === 1 ? '' : 's') + ' after completion. Futuregram sends it to the next unfinished Priority goal, then Shared goals.'
+          : 'The inflow is enabled, but its amount is $0. Set an amount or turn it off.')
+      : 'This is off, so Futuregram will not assume any money arrives after completion.';
+
+    const faceClass = face => face === currentFace ? 'is-active' : '';
+    const faceHidden = face => face === currentFace ? 'false' : 'true';
+    const summaryFace =
+      '<section class="goal-face ' + faceClass(0) + '" data-goal-face="0" aria-hidden="' + faceHidden(0) + '">' +
+        '<div class="face-heading"><div><p class="eyebrow">Face 1 · Summary</p><h2>Plan at a glance</h2><p>' + escapeHTML(statusExplanation) + '</p></div></div>' +
+        '<div class="goal-stats">' +
+          '<div><div class="goal-progress-text"><span>' + money(goal.saved) + ' saved</span><span>' + progress.toFixed(0) + '% of ' + money(goal.target) + '</span></div><div class="goal-progress"><span style="width:' + progress + '%"></span></div></div>' +
+          '<div class="goal-stat"><label>Funding now</label><b>' + money2(weekly) + '/wk</b></div>' +
+          '<div class="goal-stat"><label>Time left</label><b>' + eta + '</b></div>' +
+          '<div class="goal-stat"><label>Projected</label><b>' + projected + '</b></div>' +
+        '</div>' + deadlineGuidance +
+        '<div class="guidance"><strong>Snowball after this goal</strong>' + escapeHTML(snowballPreview) + (afterStage ? '<div class="button-row" style="margin-top:9px"><button class="btn" onclick="inspectGoalFuture(' + index + ')">Inspect buckets and goals</button></div>' : '') + '</div>' +
+        '<div class="face-actions"><div class="button-row">' + activeAction + '<button class="btn" onclick="setGoalFaceByIndex(' + index + ',1)">Edit goal</button></div><span class="tiny">Swipe left/right, drag with a mouse, or use the controls below.</span></div>' +
+      '</section>';
+
+    const goalFace =
+      '<section class="goal-face ' + faceClass(1) + '" data-goal-face="1" aria-hidden="' + faceHidden(1) + '">' +
+        '<div class="face-heading"><div><p class="eyebrow">Face 2 · Goal</p><h2>Edit the target</h2><p>Name it, define the finish line, and optionally ask for a deadline pace.</p></div></div>' +
+        '<div class="form-grid three">' +
+          '<div class="field"><label>Goal name</label><input class="input" type="text" value="' + escapeHTML(goal.name) + '" onchange="setGoal(' + index + ',\'name\',this.value)"></div>' +
+          '<div class="field"><label>Goal type</label><select class="select" onchange="setGoal(' + index + ',\'type\',this.value)"><option value="one-time" ' + (goal.type === 'one-time' ? 'selected' : '') + '>One-time finish — trip, fund, cash purchase</option><option value="ongoing" ' + (goal.type === 'ongoing' ? 'selected' : '') + '>Ownership / upkeep — vehicle, home</option></select><p class="field-explainer">' + escapeHTML(typeHelp) + '</p></div>' +
+          '<div class="field"><label>Target amount</label><div class="field-inline"><span class="prefix">$</span><input class="input" type="number" min="0" step="50" value="' + num(goal.target) + '" onchange="setGoal(' + index + ',\'target\',this.value)"></div></div>' +
+          '<div class="field"><label>Already saved</label><div class="field-inline"><span class="prefix">$</span><input class="input" type="number" min="0" step="10" value="' + num(goal.saved) + '" onchange="setGoal(' + index + ',\'saved\',this.value)"></div></div>' +
+          '<div class="field"><label>Deadline (optional)</label><input class="input" type="date" value="' + escapeHTML(goal.targetDate || '') + '" onchange="setGoal(' + index + ',\'targetDate\',this.value)"><p class="field-explainer">Leave this blank for a priority-only goal. Setting a date does not change funding by itself; it shows the pace and gap required.</p></div>' +
+        '</div>' + deadlineGuidance +
+        '<div class="face-actions"><div class="button-row">' + (goal.targetDate ? '<button class="btn" onclick="clearGoalDate(' + index + ')">Clear deadline</button>' : '') + '</div><button class="btn danger" onclick="removeGoal(' + index + ')">Delete goal</button></div>' +
+      '</section>';
+
+    const fundingFace =
+      '<section class="goal-face ' + faceClass(2) + '" data-goal-face="2" aria-hidden="' + faceHidden(2) + '">' +
+        '<div class="face-heading"><div><p class="eyebrow">Face 3 · Funding</p><h2>Choose how this goal receives AP</h2><p>Priority goals take turns. Shared goals can keep moving in the background.</p></div>' + activeAction + '</div>' +
+        '<div class="field" style="max-width:360px"><label>Funding behavior</label><select class="select" onchange="setGoal(' + index + ',\'funding\',this.value)"><option value="priority" ' + (goal.funding === 'priority' ? 'selected' : '') + '>Priority queue — wait, then take focus</option><option value="shared" ' + (goal.funding === 'shared' ? 'selected' : '') + '>Shared / background — use leftover capacity</option></select><p class="field-explainer">' + escapeHTML(fundingHelp) + '</p></div>' +
+        '<div class="section-rule"></div><h3>Bucket mix</h3><p class="tiny">Enter 0–100 for each bucket. The dollar result beside it explains what that setting means in the current mode.</p><div class="allocation-editor">' + mixRows + '</div>' +
+      '</section>';
+
+    const inflowFields = goal.inflowEnabled
+      ? '<div class="form-grid three" style="margin-top:12px">' +
+          '<div class="field"><label>Amount expected</label><div class="field-inline"><span class="prefix">$</span><input class="input" type="number" min="0" step="50" value="' + num(goal.futureInflow) + '" onchange="setGoal(' + index + ',\'futureInflow\',this.value)"></div><p class="field-explainer">A one-time amount, not monthly income.</p></div>' +
+          '<div class="field"><label>When does it arrive?</label><div class="field-inline"><input class="input" type="number" min="0" step="1" value="' + num(goal.inflowDelayWeeks) + '" onchange="setGoal(' + index + ',\'inflowDelayWeeks\',this.value)"><span class="suffix">weeks after</span></div><p class="field-explainer">0 means the same week this goal completes.</p></div>' +
+          '<div class="field"><label>What is the money from?</label><input class="input" type="text" placeholder="Example: Sell old car" value="' + escapeHTML(goal.inflowLabel || '') + '" onchange="setGoal(' + index + ',\'inflowLabel\',this.value)"><p class="field-explainer">This is only the timeline name, such as “Sell old car,” “Tax refund,” or “Expected bonus.”</p></div>' +
+        '</div>'
+      : '';
+
+    const afterFace =
+      '<section class="goal-face ' + faceClass(3) + '" data-goal-face="3" aria-hidden="' + faceHidden(3) + '">' +
+        '<div class="face-heading"><div><p class="eyebrow">Face 4 · After completion</p><h2>Optional changes caused by finishing</h2><p>Nothing here is required. Use it only if this goal creates a new bill or unlocks money later.</p></div></div>' +
+        '<div class="choice-panel"><div class="choice-title"><div><strong>Does completion create a new monthly cost?</strong><span>Examples: car payment, insurance, storage, maintenance, or a higher housing payment.</span></div></div>' +
+          '<div class="field" style="max-width:280px;margin-top:12px"><label>New cost after completion</label><div class="field-inline"><span class="prefix">$</span><input class="input" type="number" min="0" step="5" value="' + num(goal.postCost) + '" onchange="setGoal(' + index + ',\'postCost\',this.value)"><span class="suffix">/month</span></div></div>' +
+          '<div class="guidance ' + (num(goal.postCost) > 0 ? 'warning' : '') + '"><strong>Futuregram preview</strong>' + escapeHTML(costPreview) + '</div></div>' +
+        '<div class="choice-panel"><div class="choice-title"><input class="check" type="checkbox" id="inflowToggle' + index + '" ' + (goal.inflowEnabled ? 'checked' : '') + ' onchange="setGoal(' + index + ',\'inflowEnabled\',this.checked)"><label for="inflowToggle' + index + '"><strong>Do you expect one-time money after completion?</strong><span>Example: sell the old car after buying the replacement, or receive a delayed bonus or refund.</span></label></div>' + inflowFields +
+          '<div class="guidance ' + (goal.inflowEnabled && num(goal.futureInflow) <= 0 ? 'warning' : '') + '"><strong>Futuregram preview</strong>' + escapeHTML(inflowPreview) + '</div></div>' +
+      '</section>';
+
+    const labels = ['Summary', 'Goal', 'Funding', 'After'];
+    const stepButtons = labels.map((label, face) => '<button class="cube-step ' + (face === currentFace ? 'active' : '') + '" data-cube-step="' + face + '" onclick="setGoalFaceByIndex(' + index + ',' + face + ')" ' + (face === currentFace ? 'aria-current="step"' : '') + '>' + label + '</button>').join('');
+
+    return '<article class="card goal-card" data-goal-card="' + escapeHTML(goal.id) + '" data-goal-index="' + index + '">' +
+      '<div class="goal-card-head"><div class="goal-top">' +
+        '<div class="priority-chip">#' + (index + 1) + '</div>' +
+        '<div class="goal-name"><div class="goal-name-row"><h3>' + escapeHTML(goal.name) + '</h3><span class="status-chip ' + statusClass + '">' + statusText + '</span></div><div class="goal-sub">' + (goal.funding === 'priority' ? 'Priority queue' : 'Shared background') + (goal.targetDate ? ' · deadline ' + escapeHTML(goal.targetDate) : ' · no deadline') + '</div></div>' +
+        '<div class="goal-actions"><button class="btn icon" ' + (index === 0 ? 'disabled' : '') + ' onclick="moveGoal(' + index + ',-1)" aria-label="Move ' + escapeHTML(goal.name) + ' up">↑</button><button class="btn icon" ' + (index === S.goals.length - 1 ? 'disabled' : '') + ' onclick="moveGoal(' + index + ',1)" aria-label="Move ' + escapeHTML(goal.name) + ' down">↓</button></div>' +
+      '</div></div>' +
+      '<div class="goal-cube-scene" data-cube-scene><div class="goal-cube-rotator" data-cube-rotator data-rotation="' + (-currentFace * 90) + '" style="transform:translateZ(var(--cube-depth-neg)) rotateY(' + (-currentFace * 90) + 'deg)">' + summaryFace + goalFace + fundingFace + afterFace + '</div></div>' +
+      '<nav class="goal-cube-nav" aria-label="Pages for ' + escapeHTML(goal.name) + '"><button class="btn" data-cube-back ' + (currentFace === 0 ? 'disabled' : '') + ' onclick="stepGoalFaceByIndex(' + index + ',-1)">← Back</button><div class="cube-steps">' + stepButtons + '</div><button class="btn" data-cube-next ' + (currentFace === 3 ? 'disabled' : '') + ' onclick="stepGoalFaceByIndex(' + index + ',1)">Next →</button></nav>' +
+      '</article>';
+  }
+
+  function statusLabel(status) {
+    return ({ active: "Active", queued: "Queued", shared: "Shared", complete: "Complete" })[status] || status;
+  }
+
+  function stageDeltaHTML(value) {
+    const delta = num(value);
+    if (Math.abs(delta) < .005) return '<span class="tiny">—</span>';
+    return '<span class="' + (delta > 0 ? 'delta-up' : 'delta-down') + '">' + (delta > 0 ? '+' : '−') + money2(Math.abs(delta)) + '</span>';
+  }
+
+  function renderStageInspector(snapshot) {
+    const host = $("futureStageInspector");
+    const stages = snapshot.sim.stages || [];
+    if (!stages.length) {
+      host.innerHTML = '<div class="empty">Add a funded goal to create future stages.</div>';
+      return;
+    }
+
+    futureStageIndex = clamp(Math.round(futureStageIndex), 0, stages.length - 1);
+    const stage = stages[futureStageIndex];
+    const previous = stages[Math.max(0, futureStageIndex - 1)];
+    const baseline = stages[0];
+    const active = stage.goals.find(goal => goal.status === 'active');
+    const stageDate = stage.week === 0 ? 'Now' : formatDate(dateAfterWeeks(stage.week));
+    const poolSinceNow = stage.pool - baseline.pool;
+    const options = stages.map((item, index) => {
+      const date = item.week === 0 ? 'Now' : formatDate(dateAfterWeeks(item.week));
+      return '<option value="' + index + '" ' + (index === futureStageIndex ? 'selected' : '') + '>' + escapeHTML(date + ' — ' + item.title) + '</option>';
+    }).join('');
+
+    const changedGoals = stage.goals.map(goal => {
+      const before = previous.goals.find(item => item.id === goal.id);
+      return { name: goal.name, status: goal.status, weekly: goal.weekly, delta: goal.weekly - num(before && before.weekly) };
+    }).filter(goal => Math.abs(goal.delta) > .005).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 3);
+
+    let insight;
+    if (futureStageIndex === 0) {
+      insight = '<strong>This is the starting position.</strong> Pick a later milestone to see exactly what moves. Goal percentages remain the rules; the dollar amounts below are the recalculated result.';
+    } else {
+      const changeText = changedGoals.length
+        ? ' Funding changes: ' + changedGoals.map(goal => goal.name + ' ' + (goal.delta >= 0 ? 'gains ' : 'loses ') + money2(Math.abs(goal.delta)) + '/week').join('; ') + '.'
+        : ' Goal funding is unchanged from the previous milestone.';
+      insight = '<strong>' + escapeHTML(stage.title) + ':</strong> weekly AP is ' + (poolSinceNow >= 0 ? 'up ' : 'down ') + money2(Math.abs(poolSinceNow)) + ' versus now. ' +
+        (active ? escapeHTML(active.name) + ' is the active Priority goal.' : 'There is no active Priority goal.') +
+        (stage.scale >= .999 ? ' The entered bucket amounts still fit; the change is being absorbed by unassigned AP.' : ' Bucket amounts are proportionally reduced to ' + (stage.scale * 100).toFixed(0) + '% because the entered total no longer fits.') + escapeHTML(changeText);
+    }
+
+    const bucketRows = stage.buckets.map(bucket => {
+      const before = previous.buckets.find(item => item.id === bucket.id);
+      const reserve = bucket.reserveTarget > 0
+        ? money(bucket.reserveBalance) + ' / ' + money(bucket.reserveTarget) + (bucket.reserveGated ? ' · refilling' : ' · ready')
+        : 'No reserve gate';
+      return '<tr><td><span class="bucket-color" style="background:' + COLORS[stage.buckets.indexOf(bucket) % COLORS.length] + '"></span> ' + escapeHTML(bucket.name) + '</td>' +
+        '<td>' + money2(bucket.planned) + '</td><td>' + money2(bucket.weekly) + '</td><td>' + money2(bucket.toGoals) + '</td><td>' + escapeHTML(reserve) + '</td><td>' + stageDeltaHTML(bucket.weekly - num(before && before.weekly)) + '</td></tr>';
+    }).join('') || '<tr><td colspan="6">No AP buckets configured.</td></tr>';
+
+    const goalRows = stage.goals.map(goal => {
+      const before = previous.goals.find(item => item.id === goal.id);
+      return '<tr><td>' + escapeHTML(goal.name) + '</td><td><span class="status-chip status-' + goal.status + '">' + escapeHTML(statusLabel(goal.status)) + '</span></td><td>' + money2(goal.weekly) + '</td><td>' + stageDeltaHTML(goal.weekly - num(before && before.weekly)) + '</td><td>' + money(goal.remaining) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5">No goals configured.</td></tr>';
+
+    host.innerHTML =
+      '<div class="stage-toolbar"><button class="btn" onclick="setFutureStage(' + (futureStageIndex - 1) + ')" ' + (futureStageIndex === 0 ? 'disabled' : '') + '>← Earlier</button>' +
+        '<div class="field"><label for="futureStageSelect">Milestone to inspect</label><select class="select" id="futureStageSelect" onchange="setFutureStage(this.value)">' + options + '</select></div>' +
+        '<button class="btn" onclick="setFutureStage(' + (futureStageIndex + 1) + ')" ' + (futureStageIndex === stages.length - 1 ? 'disabled' : '') + '>Later →</button></div>' +
+      '<div class="stage-summary"><div><label>Stage</label><b>' + escapeHTML(stageDate) + '</b></div><div><label>Weekly AP</label><b>' + money2(stage.pool) + '</b></div><div><label>New costs / month</label><b>' + money(stage.addedMonthlyCosts) + '</b></div><div><label>Bucket strength</label><b>' + (stage.scale * 100).toFixed(0) + '%</b></div><div><label>Unassigned AP</label><b>' + money2(stage.unassigned) + '</b></div></div>' +
+      '<div class="stage-insight">' + insight + '</div>' +
+      '<div class="stage-columns"><div class="stage-panel"><h3>Bucket position</h3><p class="tiny">Entered is your saved setting. Stage AP is what fits after expenses. To goals is what reaches goals after reserve gates and goal percentages.</p><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Bucket</th><th>Entered</th><th>Stage AP</th><th>To goals</th><th>Reserve</th><th>Δ stage</th></tr></thead><tbody>' + bucketRows + '</tbody></table></div></div>' +
+      '<div class="stage-panel"><h3>Goal position</h3><p class="tiny">This shows the resulting dollars—not just the percentages—after the selected milestone.</p><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Goal</th><th>State</th><th>Funding / wk</th><th>Δ stage</th><th>Remaining</th></tr></thead><tbody>' + goalRows + '</tbody></table></div></div></div>';
+  }
+
+  function renderTimeline(snapshot) {
+    renderStageInspector(snapshot);
+    const nowEvent = { week: 0, type: "now", title: S.priorityMode ? "Priority plan is active" : "Shared plan is active", copy: S.priorityMode ? "The first unfinished Priority goal receives its dedicated mix now." : "All unfinished goals draw from the shared bucket pool now." };
+    const events = [nowEvent].concat(snapshot.sim.events).slice(0, 80);
+    if (!events.length) {
+      $("timelineEvents").innerHTML = '<div class="empty">Add goals and funding to generate milestones.</div>';
+    } else {
+      $("timelineEvents").innerHTML = events.map(event => {
+        const label = event.week === 0 ? "Now" : formatDate(dateAfterWeeks(event.week));
+        const glyph = event.type === 'complete' ? '✓' : event.type === 'rollover' ? '→' : event.type === 'cost' ? '$' : event.type === 'inflow' ? '+' : '•';
+        return '<div class="timeline-event"><span class="event-dot ' + event.type + '">' + glyph + '</span><div><div class="event-title">' + escapeHTML(event.title) + '</div><div class="event-copy">' + escapeHTML(event.copy) + '</div></div><div class="event-date">' + label + (event.week > 0 ? '<br>week ' + num(event.week).toFixed(0) : '') + '</div></div>';
+      }).join("");
+    }
+    if (snapshot.sim.events.length >= 80) $("timelineEvents").innerHTML += '<p class="tiny">Timeline shortened to the first 80 milestones.</p>';
+
+    if (!S.goals.length) $("queueList").innerHTML = '<div class="empty">No goals in the queue.</div>';
+    else $("queueList").innerHTML = S.goals.map((goal, index) => '<div class="queue-row"><span class="queue-number">' + (index + 1) + '</span><div><div class="queue-name">' + escapeHTML(goal.name) + '</div><div class="tiny">' + (goal.funding === 'priority' ? 'Priority' : 'Shared') + '</div></div><div class="queue-eta">' + formatETA(snapshot.sim.finishWeek[index]) + '<br>' + (snapshot.sim.finishWeek[index] != null ? formatDate(dateAfterWeeks(snapshot.sim.finishWeek[index])) : '—') + '</div></div>').join("");
+
+    const currentPool = snapshot.flow.pool;
+    const finalPool = snapshot.sim.finalCash.pool;
+    const delta = finalPool - currentPool;
+    $("steadyState").innerHTML =
+      '<div class="metric-grid" style="grid-template-columns:1fr 1fr">' +
+      metricHTML('Post-goal costs', money(snapshot.sim.addedMonthlyCosts), 'monthly total', snapshot.sim.addedMonthlyCosts > 0 ? 'warn' : '') +
+      metricHTML('Future weekly AP', money(finalPool), (delta >= 0 ? '+' : '') + money(delta) + ' vs today', finalPool >= 0 ? 'good' : 'bad') +
+      '</div>' +
+      '<p class="editor-note">Futuregram reduces available AP when a completed goal creates a monthly cost. Planned inflows are placed into the next unfinished Priority goal, then Shared goals.</p>';
+  }
+
+  function renderTools() {}
+
+  function sizeGoalCube(card, faceIndex) {
+    const scene = card.querySelector('[data-cube-scene]');
+    const rotator = card.querySelector('[data-cube-rotator]');
+    const faces = Array.from(card.querySelectorAll('[data-goal-face]'));
+    const targetFace = faces.find(face => num(face.getAttribute('data-goal-face')) === faceIndex) || card.querySelector('.goal-face.is-active');
+    if (!scene || !rotator || !targetFace) return;
+
+    faces.forEach(face => { face.style.height = 'auto'; });
+    rotator.style.height = 'auto';
+    const depth = Math.max(1, scene.clientWidth / 2);
+    scene.style.setProperty('--cube-depth', depth + 'px');
+    scene.style.setProperty('--cube-depth-neg', (-depth) + 'px');
+    const targetHeight = Math.max(250, Math.ceil(targetFace.scrollHeight));
+    scene.style.height = targetHeight + 'px';
+    rotator.style.height = '100%';
+    faces.forEach(face => { face.style.height = '100%'; });
+  }
+
+  function syncGoalCubes() {
+    document.querySelectorAll('[data-goal-card]').forEach(card => {
+      const activeFace = card.querySelector('.goal-face.is-active');
+      if (activeFace) sizeGoalCube(card, num(activeFace.getAttribute('data-goal-face')));
+    });
+    bindCubeGestures();
+  }
+
+  function bindCubeGestures() {
+    document.querySelectorAll('[data-cube-scene]').forEach(scene => {
+      if (scene.dataset.swipeBound === '1') return;
+      scene.dataset.swipeBound = '1';
+      const card = scene.closest('[data-goal-card]');
+      const rotator = scene.querySelector('[data-cube-rotator]');
+      if (!card || !rotator) return;
+      let drag = null;
+
+      scene.addEventListener('pointerdown', event => {
+        if (event.button != null && event.button !== 0) return;
+        if (event.target.closest('button,input,select,textarea,label,a')) return;
+        drag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          horizontal: false,
+          startRotation: num(rotator.dataset.rotation)
+        };
+        try { scene.setPointerCapture(event.pointerId); } catch (error) {}
+      });
+
+      scene.addEventListener('pointermove', event => {
+        if (!drag || event.pointerId !== drag.pointerId) return;
+        const dx = event.clientX - drag.startX;
+        const dy = event.clientY - drag.startY;
+        if (!drag.horizontal) {
+          if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) return;
+          if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(dy)) return;
+          drag.horizontal = true;
+          scene.classList.add('is-dragging');
+        }
+        event.preventDefault();
+        const rotation = drag.startRotation + dx / Math.max(1, scene.clientWidth) * 90;
+        rotator.style.transform = 'translateZ(var(--cube-depth-neg)) rotateY(' + rotation + 'deg)';
+      });
+
+      function finishDrag(event, cancelled) {
+        if (!drag || event.pointerId !== drag.pointerId) return;
+        const current = drag;
+        drag = null;
+        scene.classList.remove('is-dragging');
+        try { scene.releasePointerCapture(event.pointerId); } catch (error) {}
+        const dx = event.clientX - current.startX;
+        const threshold = Math.max(42, scene.clientWidth * .12);
+        if (!cancelled && current.horizontal && Math.abs(dx) >= threshold) {
+          window.stepGoalFaceByIndex(num(card.dataset.goalIndex), dx < 0 ? 1 : -1);
+        } else {
+          rotator.style.transform = 'translateZ(var(--cube-depth-neg)) rotateY(' + current.startRotation + 'deg)';
+        }
+      }
+
+      scene.addEventListener('pointerup', event => finishDrag(event, false));
+      scene.addEventListener('pointercancel', event => finishDrag(event, true));
+    });
+  }
+
+  function render() {
+    S = normalize(S);
+    const snapshot = currentSnapshot();
+    renderOverview(snapshot);
+    renderCashflow(snapshot);
+    renderGoals(snapshot);
+    renderTimeline(snapshot);
+    renderTools();
+    saveState();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncGoalCubes);
+  }
+
+  window.showView = function (view) {
+    activeView = view;
+    document.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.id === 'view-' + view));
+    document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.view === view));
+    if (view === 'goals' && typeof requestAnimationFrame === 'function') requestAnimationFrame(syncGoalCubes);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  window.setFutureStage = function (index) {
+    const stages = currentSnapshot().sim.stages || [];
+    futureStageIndex = stages.length ? clamp(Math.round(num(index)), 0, stages.length - 1) : 0;
     render();
   };
-}
-function addRow(key){ S[key].push(["New item",0]); buildStatic(); render(); }
-function addGoal(){ S.goals.push({name:"New goal",target:1000,saved:0,pulls:BUCKET_NAMES.map(()=>0)}); buildStatic(); render(); }
-function addDebt(){ S.debts.push(["New debt",0,0,0]); buildStatic(); render(); }
-// goal card flip + priority order (card order IS the priority)
-const FLIPPED = new Set(); // which cards show their settings side — per session, not saved
-function toggleFlip(gi){
-  FLIPPED.has(gi) ? FLIPPED.delete(gi) : FLIPPED.add(gi);
-  $("flip"+gi).classList.toggle("flipped", FLIPPED.has(gi));
-}
-function moveGoal(gi, dir){
-  const j = gi+dir;
-  if(j<0 || j>=S.goals.length) return;
-  [S.goals[gi], S.goals[j]] = [S.goals[j], S.goals[gi]];
-  const a = FLIPPED.has(gi), b = FLIPPED.has(j);
-  FLIPPED[b?"add":"delete"](gi); FLIPPED[a?"add":"delete"](j);
-  buildStatic(); render();
-}
-function removeGoal(gi){
-  if(!confirm('Delete the "'+S.goals[gi].name+'" goal?')) return;
-  S.goals.splice(gi,1);
-  const keep = [...FLIPPED].filter(i=> i!==gi).map(i=> i>gi ? i-1 : i); // other cards stay flipped
-  FLIPPED.clear(); keep.forEach(i=> FLIPPED.add(i));
-  buildStatic(); render();
-}
+  window.inspectGoalFuture = function (index) {
+    const goal = S.goals[index];
+    if (!goal) return;
+    const stages = currentSnapshot().sim.stages || [];
+    const found = stages.findIndex(stage => stage.triggerGoalId === goal.id);
+    futureStageIndex = found >= 0 ? found : 0;
+    render();
+    window.showView('timeline');
+  };
 
-// ---- render ----
-let chart;
-function render(){
-  const c = calc();
-  $("grossWeekly").textContent = money(c.grossWeekly);
-  $("grossMonthly").textContent = money(c.grossWeekly*52/12);
-  $("netWeekly").textContent = money(c.netWeekly);
-  $("netMonthly").textContent = money(c.netWeekly*52/12);
-  $("billsTotal").textContent = money(c.billsMo);
-  $("recurringTotal").textContent = money(c.recurMo);
-  $("recurringFree").textContent = money(c.recurMo) + "/mo";
-  $("recurringPaused").textContent = c.pausedMo>0.005 ? "+"+money(c.pausedMo)+"/mo" : "—";
-  if(document.activeElement!==$("ded")) $("ded").value = S.ded;
-  $("dedAuto").checked = !!S.dedAuto;
-  $("ded").style.opacity = S.dedAuto ? .75 : 1;
-  $("pointsBox").textContent = money(c.points) + " / wk";
-  $("pointsBox").className = "big " + (c.points>=0?"pts-ok":"pts-over");
+  window.setPriorityMode = function (checked) { S.priorityMode = !!checked; render(); };
+  window.setLenderMode = function (checked) { S.lenderMode = !!checked; render(); };
+  window.setIncome = function (key, value) { S.income[key] = num(value); render(); };
+  window.setExpense = function (key, index, field, value) { S[key][index][field] = field === 'amount' ? Math.max(0, num(value)) : value; render(); };
+  window.addExpense = function (key) { S[key].push({ id: uid(key === 'bills' ? 'bill' : 'rec'), name: key === 'bills' ? 'New bill' : 'New recurring item', amount: 0, active: true }); render(); };
+  window.removeExpense = function (key, index) { S[key].splice(index, 1); render(); };
+  window.setDebt = function (index, field, value) { S.debts[index][field] = ['balance','payment'].includes(field) ? Math.max(0, num(value)) : value; render(); };
+  window.addDebt = function () { S.debts.push({ id: uid('debt'), name: 'New debt', balance: 0, payment: 0, active: true }); render(); };
+  window.removeDebt = function (index) { S.debts.splice(index, 1); render(); };
 
-  BUCKET_NAMES.forEach((n,i)=>{
-    const v = c.buckets[i];
-    $("bucketsVal"+i).textContent = money(v);
-    $("bucketsBar"+i).style.width = Math.min(100, c.points>0 ? v/c.points*100 : 0)+"%";
-    const rem = c.points - c.allocTotal;
-    const cap = Math.max(0,(+S.alloc[i]||0)+rem);
-    const rng = $("bucketsRng"+i);
-    rng.max = Math.max(5, Math.ceil(cap/5)*5);
-    rng.value = S.alloc[i];
-    $("bucketsNum"+i).value = (+S.alloc[i]).toFixed(2);
-    // raise widgets
-    const rv = +S.raiseAlloc[i]||0;
-    const rSpent = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
-    const rCap = Math.max(0, rv + (c.gained - rSpent));
-    $("raiseBucketsVal"+i).textContent = money(rv);
-    $("raiseBucketsBar"+i).style.width = Math.min(100, c.gained>0 ? rv/c.gained*100 : 0)+"%";
-    const rrng = $("raiseBucketsRng"+i);
-    rrng.max = Math.max(5, Math.ceil(rCap/5)*5);
-    rrng.value = rv;
-    $("raiseBucketsNum"+i).value = rv.toFixed(2);
-  });
-  $("allocTotal").textContent = money(c.allocTotal);
-  const rem = c.points - c.allocTotal;
-  $("remainBox").textContent = "Remaining: " + money(rem);
-  $("remainBox").className = "big " + (Math.abs(rem)<0.01 ? "pts-ok" : rem<0 ? "pts-over" : "pts-left");
+  window.setBucket = function (index, field, value) {
+    S.buckets[index][field] = ['weekly','reserveTarget','reserveBalance'].includes(field) ? Math.max(0, num(value)) : value;
+    render();
+  };
+  window.addBucket = function () {
+    S.buckets.push({ id: uid('bucket'), name: 'New bucket', weekly: 0, reserveTarget: 0, reserveBalance: 0 });
+    S.goals.forEach(goal => goal.pulls.push(0));
+    render();
+    const index = S.buckets.length - 1;
+    const name = prompt('Name this bucket:', S.buckets[index].name);
+    if (name && name.trim()) { S.buckets[index].name = name.trim(); render(); }
+  };
+  window.editBucket = function (index) {
+    const bucket = S.buckets[index];
+    const name = prompt('Bucket name:', bucket.name);
+    if (name === null) return;
+    if (name.trim()) bucket.name = name.trim();
+    const target = prompt('Reserve target for ' + bucket.name + ':', num(bucket.reserveTarget));
+    if (target === null) { render(); return; }
+    bucket.reserveTarget = Math.max(0, num(target));
+    const balance = prompt('Current reserve balance for ' + bucket.name + ':', num(bucket.reserveBalance));
+    if (balance !== null) bucket.reserveBalance = Math.max(0, num(balance));
+    render();
+  };
+  window.removeBucket = function (index) {
+    const bucket = S.buckets[index];
+    if (!confirm('Remove the "' + bucket.name + '" bucket and its settings from every goal?')) return;
+    S.buckets.splice(index, 1);
+    S.goals.forEach(goal => goal.pulls.splice(index, 1));
+    render();
+  };
+  window.bankRemainder = function () {
+    const snapshot = currentSnapshot();
+    if (snapshot.remainder < 4.995 || !S.buckets.length) return;
+    let index = S.buckets.findIndex(bucket => /saving|reserve/i.test(bucket.name));
+    if (index < 0) index = S.buckets.length - 1;
+    const amount = Math.floor(snapshot.remainder / 5) * 5;
+    S.buckets[index].weekly = num(S.buckets[index].weekly) + amount;
+    toast(money(amount) + '/week moved to ' + S.buckets[index].name + '.');
+    render();
+  };
 
-  // raise
-  $("wGross").textContent = money(c.newGross);
-  $("wGrossMo").textContent = money(c.newGross*52/12);
-  $("wNet").textContent = money(c.newNet);
-  $("wNetMo").textContent = money(c.newNet*52/12);
-  $("gainBox").textContent = "New points: +" + money(c.gained) + " / wk";
-  $("gainBox").className = "big " + (c.gained>0?"pts-ok":"pts-left");
-  const rSpent = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
-  const rRem = c.gained - rSpent;
-  $("raiseRemainBox").textContent = "New points remaining: " + money(rRem);
-  $("raiseRemainBox").className = "big " + (Math.abs(rRem)<0.01 ? "pts-ok" : rRem<0 ? "pts-over" : "pts-left");
-
-  // goals — priority waterfall: simulate the plan through time; when a goal
-  // completes, its pull % spills over to the next goal in line automatically
-  const committed = BUCKET_NAMES.map(()=>0); // raw claims — cap the pull inputs at one 100% pool per bucket
-  S.goals.forEach(g=> g.pulls.forEach((p,bi)=>{ committed[bi] += Math.max(0,Math.min(100,+p||0)); }));
-  // what-if buckets: use panel 5's split of the new points if any; otherwise auto-split
-  // the raise proportionally to the current allocation so the what-if always works
-  const rSpentG = S.raiseAlloc.reduce((a,b)=>a+(+b||0),0);
-  const baseTotal = S.alloc.reduce((a,b)=>a+(+b||0),0);
-  const mergedBuckets = S.alloc.map((v,i)=>{
-    const extra = rSpentG>0.005 ? (+S.raiseAlloc[i]||0)
-                : baseTotal>0 ? c.gained*(+v||0)/baseTotal
-                : (i===S.alloc.length-1 ? c.gained : 0);
-    return (+v||0)+extra;
-  });
-  const note = $("goalRaiseNote");
-  if(c.withRaise) note.textContent = (c.gained>0.005 && rSpentG<=0.005)
-    ? "Raise is included in your points (panel 4 toggle is on) — but none of the new money is aimed at a bucket yet. Split it in panel 5 (or move the panel 4 sliders) so goals actually speed up."
-    : "Raise is included in the main numbers above (panel 4 toggle is on).";
-  else if(c.gained<=0.005) note.textContent = "";
-  else if(rSpentG>0.005) note.textContent = `What-if lines use your panel 5 split of the +${money(c.gained)}/wk raise.`;
-  else note.textContent = `What-if lines auto-split the +${money(c.gained)}/wk raise proportionally across your buckets — allocate it yourself in panel 5 to take control.`;
-  const sim  = simulatePlan(c.buckets, S.reserveTarget, S.reserveBal, S.goals);
-  const simR = simulatePlan(mergedBuckets, S.reserveTarget, S.reserveBal, S.goals);
-  const gname  = gi => S.goals[gi] ? S.goals[gi].name : "?";
-  const FAR = 5200; // ~100 years of weeks — past this we call it "never"
-  const fmtWks = w => w.toFixed(1)+" wks ("+(w/4.333).toFixed(1)+" mo)";
-  const fmtMo  = w => new Date(Date.now()+w*6.048e8).toLocaleDateString(undefined,{month:"short",year:"numeric"});
-  const fmtDay = w => new Date(Date.now()+w*6.048e8).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
-  // reserves: weeks until each bucket's reserve is full (0 = full / no reserve)
-  const resT = S.reserveTarget, resB = S.reserveBal;
-  const delay = c.buckets.map((w,i)=> resT[i]>0 && resB[i]<resT[i] ? (w>0 ? (resT[i]-resB[i])/w : Infinity) : 0);
-  S.goals.forEach((g,gi)=>{
-    const r = sim.res[gi];
-    const isDone = (+g.target||0) - (+g.saved||0) <= 0.005;
-    const claim = r.effNow.reduce((a,p,bi)=> a + c.buckets[bi]*p/100, 0); // what it draws today, spillover included
-    g.pulls.forEach((p,bi)=>{
-      p = Math.max(0,Math.min(100,+p||0));
-      const inp = $("pull"+gi+"_"+bi);
-      if(inp){
-        const free = Math.max(0, 100 - committed[bi] + p);
-        inp.max = free;
-        if(document.activeElement!==inp) inp.value = p;
-        const fl = $("pullFree"+gi+"_"+bi);
-        if(fl) fl.textContent = "("+Math.round(free)+"% max)";
-      }
+  window.setGoal = function (index, field, value) {
+    const numericFields = ['target','saved','postCost','futureInflow','inflowDelayWeeks'];
+    S.goals[index][field] = numericFields.includes(field) ? Math.max(0, num(value)) : value;
+    render();
+  };
+  window.setPull = function (goalIndex, bucketIndex, value) { S.goals[goalIndex].pulls[bucketIndex] = clamp(value, 0, 100); render(); };
+  window.addGoal = function () {
+    const id = uid('goal');
+    S.goals.push({ id, name: 'New goal', type: 'one-time', funding: S.priorityMode ? 'priority' : 'shared', target: 1000, saved: 0, targetDate: '', postCost: 0, futureInflow: 0, inflowLabel: 'Future inflow', inflowDelayWeeks: 12, inflowEnabled: false, pulls: S.buckets.map(() => 0) });
+    GOAL_FACES.set(id, 1);
+    render();
+  };
+  window.removeGoal = function (index) {
+    if (!confirm('Delete the "' + S.goals[index].name + '" goal?')) return;
+    GOAL_FACES.delete(S.goals[index].id);
+    S.goals.splice(index, 1);
+    render();
+  };
+  window.moveGoal = function (index, direction) {
+    const next = index + direction;
+    if (next < 0 || next >= S.goals.length) return;
+    const temp = S.goals[index];
+    S.goals[index] = S.goals[next];
+    S.goals[next] = temp;
+    render();
+  };
+  window.setGoalFace = function (id, face) {
+    const nextFace = clamp(Math.round(num(face)), 0, 3);
+    GOAL_FACES.set(id, nextFace);
+    const card = Array.from(document.querySelectorAll('[data-goal-card]')).find(item => item.getAttribute('data-goal-card') === id);
+    if (!card) { render(); return; }
+    const rotator = card.querySelector('[data-cube-rotator]');
+    const currentRotation = num(rotator.dataset.rotation);
+    let targetRotation = -nextFace * 90;
+    while (targetRotation - currentRotation > 180) targetRotation -= 360;
+    while (targetRotation - currentRotation < -180) targetRotation += 360;
+    rotator.dataset.rotation = targetRotation;
+    card.querySelectorAll('[data-goal-face]').forEach(panel => {
+      const panelFace = num(panel.getAttribute('data-goal-face'));
+      panel.classList.toggle('is-active', panelFace === nextFace);
+      panel.setAttribute('aria-hidden', panelFace === nextFace ? 'false' : 'true');
     });
-    $("goalProg"+gi).textContent = money0(g.saved)+" / "+money0(g.target);
-    $("goalWk"+gi).textContent = money(r.rateNow); // reserve-gated: what actually flows this week
-    $("goalBar"+gi).style.width = Math.min(100, g.target>0 ? g.saved/g.target*100 : 0)+"%";
-    const weeks = r.finish;
-    const reachable = isFinite(weeks) && weeks <= FAR;
-    $("goalWeeks"+gi).textContent = isDone ? "✓ complete" : reachable ? fmtWks(weeks) : isFinite(weeks) ? "100+ years" : "not funded";
-    $("goalDate"+gi).textContent = isDone ? "🎉" : reachable ? fmtMo(weeks) : "—";
-    // queued / boosted-later info from the simulation
-    const bits = [];
-    if(!isDone && claim > r.rateNow + 0.005) bits.push(money(claim)+"/wk once reserves are full");
-    if(!isDone && r.start!==null && r.start>0.05) bits.push("starts wk "+r.start.toFixed(1));
-    r.boosts.forEach(b=>{ if(isFinite(b.t) && b.t>0.05 && b.t<=FAR) bits.push("+"+money(b.add)+"/wk at wk "+b.t.toFixed(1)+" (after “"+gname(b.from)+"”)"); });
-    $("goalBoost"+gi).innerHTML = bits.length ? `<span>${bits.map(esc).join(" · ")}</span>` : "";
-    const src = r.effNow.map((p,bi)=> c.buckets[bi]*p/100>0.005 ? BUCKET_SHORT[bi]+" "+money(c.buckets[bi]*p/100)+(delay[bi]>0.05 ? " (after reserve)" : "") : null).filter(Boolean);
-    const spilled = sim.milestones.find(m=> (m.type==="spill"||m.type==="free") && m.gi===gi && m.t<0.05);
-    $("goalSrc"+gi).textContent = isDone
-      ? (spilled && spilled.type==="spill" ? "✓ done — its pull % now boosts “"+gname(spilled.to)+"”"
-         : spilled ? "✓ done — its money went back to the buckets" : "✓ done")
-      : (src.length ? "from: "+src.join(" · ")
-        : g.pulls.some(p=> +p>0) ? "its buckets have no weekly $ yet — move the sliders in panel 4"
-        : "flip this card (⚙) and set a pull % to fund it");
-    // what-if: same pulls, but with the raise money allocated in panel 5 included
-    const el = $("goalRaise"+gi);
-    const weeksR = simR.res[gi].finish;
-    const reachR = isFinite(weeksR) && weeksR <= FAR;
-    if(!isDone && !c.withRaise && c.gained>0.005 && reachR && (!reachable || weeksR < weeks-0.05)){
-      el.innerHTML = `<span>w/ raise: <b>${fmtWks(weeksR)}</b></span><span>done <b>${fmtMo(weeksR)}</b></span>`;
-    } else if(!isDone && !c.withRaise && c.gained>0.005 && !reachR){
-      el.innerHTML = `<span>w/ raise: still not funded — set some pull %</span>`;
-    } else el.innerHTML = "";
-  });
-  // bucket summary: weekly / reserve / to goals (live claims incl. spillover) / left
-  const active = BUCKET_NAMES.map((n,bi)=> Math.min(100, sim.res.reduce((a,r)=> a + (+r.effNow[bi]||0), 0)));
-  BUCKET_NAMES.forEach((n,i)=>{
-    const pctC = active[i];
-    const refilling = resT[i]>0 && resB[i]<resT[i];
-    const overflow = refilling ? 0 : c.buckets[i];
-    const toGoals = overflow*pctC/100;
-    const leftV = overflow-toGoals;
-    $("resWk"+i).textContent = money(c.buckets[i]);
-    if(document.activeElement!==$("resT"+i)) $("resT"+i).value = resT[i];
-    if(document.activeElement!==$("resB"+i)) $("resB"+i).value = resB[i];
-    $("resStatus"+i).textContent = resT[i]>0 ? (refilling ? "refilling · "+(isFinite(delay[i])?delay[i].toFixed(1)+" wks to full":"no inflow") : "full ✓ overflowing") : "—";
-    $("resStatus"+i).style.color = resT[i]>0 ? (refilling ? "var(--amber)" : "var(--green)") : "var(--muted)";
-    $("resGoals"+i).textContent = money(toGoals)+" ("+Math.round(pctC)+"%)";
-    $("resLeft"+i).innerHTML = `<b style="color:${leftV>0.005?"var(--green)":"var(--muted)"}">${money(leftV)}</b>`;
-    $("resBar"+i).style.width = (resT[i]>0 ? Math.min(100, resB[i]/resT[i]*100) : (c.buckets[i]>0 ? leftV/c.buckets[i]*100 : 0))+"%";
-    $("resBar"+i).title = resT[i]>0 ? "reserve fill" : "left over";
-  });
-
-  // plan timeline — every milestone the simulation found, in order
-  const tl = $("timeline"); tl.innerHTML = "";
-  const tlAdd = (cls, when, html) => { const e = document.createElement("li"); if(cls) e.className = cls; e.innerHTML = `<span class="when">${when}</span>${html}`; tl.appendChild(e); };
-  if(!S.goals.length){
-    tlAdd("", "—", "add a goal to see your plan take shape here");
-  } else {
-    const flowNow = sim.res.reduce((a,r)=> a + r.rateNow, 0);
-    tlAdd("", "Now", `goals are receiving <b>${money(flowNow)}</b>/wk of your <b>${money(c.allocTotal)}</b>/wk bucket money`);
-    sim.milestones.filter(m=> isFinite(m.t) && m.t<=FAR).sort((a,b)=> a.t-b.t).forEach(m=>{
-      const when = m.t<0.05 ? "Now" : "wk "+m.t.toFixed(1)+" · "+fmtDay(m.t);
-      if(m.type==="reserve") tlAdd("tl-res", when, `<b>${esc(BUCKET_NAMES[m.bi])}</b> reserve full — its overflow starts flowing to goals`);
-      else if(m.type==="goal") tlAdd("tl-goal", when, `🎯 <b>${esc(gname(m.gi))}</b> complete`);
-      else if(m.type==="spill") tlAdd("tl-spill", when, `<b>${money(m.amt)}</b>/wk spills from “${esc(gname(m.gi))}” to <b>“${esc(gname(m.to))}”</b>`);
-      else if(m.type==="free") tlAdd("tl-spill", when, `last goal in line done — <b>${money(m.amt)}</b>/wk frees up in its buckets for whatever comes next (upkeep, payments, a new goal)`);
+    card.querySelectorAll('[data-cube-step]').forEach(step => {
+      const isCurrent = num(step.getAttribute('data-cube-step')) === nextFace;
+      step.classList.toggle('active', isCurrent);
+      if (isCurrent) step.setAttribute('aria-current', 'step');
+      else step.removeAttribute('aria-current');
     });
-    const stuck = S.goals.filter((g,gi)=> !(sim.res[gi].finish <= FAR)).map(g=>g.name);
-    if(stuck.length) tlAdd("", "⚠ never", `<b>${stuck.map(esc).join(", ")}</b> never finishes — no money reaches it yet (set a pull %, or its bucket / reserve has no inflow)`);
+    card.querySelector('[data-cube-back]').disabled = nextFace === 0;
+    card.querySelector('[data-cube-next]').disabled = nextFace === 3;
+    sizeGoalCube(card, nextFace);
+    const applyRotation = () => { rotator.style.transform = 'translateZ(var(--cube-depth-neg)) rotateY(' + targetRotation + 'deg)'; };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(applyRotation);
+    else applyRotation();
+  };
+  window.setGoalFaceByIndex = function (index, face) {
+    const goal = S.goals[index];
+    if (goal) window.setGoalFace(goal.id, face);
+  };
+  window.stepGoalFaceByIndex = function (index, direction) {
+    const goal = S.goals[index];
+    if (goal) window.setGoalFace(goal.id, num(GOAL_FACES.get(goal.id)) + num(direction));
+  };
+  window.clearGoalDate = function (index) {
+    S.goals[index].targetDate = '';
+    render();
+  };
+  window.makeGoalActive = function (index) {
+    const goal = S.goals[index];
+    if (!goal || num(goal.saved) >= num(goal.target)) return;
+    goal.funding = 'priority';
+    S.priorityMode = true;
+    S.goals.splice(index, 1);
+    S.goals.unshift(goal);
+    GOAL_FACES.set(goal.id, 0);
+    render();
+    toast(goal.name + ' is now the active focus.');
+  };
+
+  function download(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 500);
   }
 
-  // debts
-  let dB=0,dL=0,dP=0;
-  S.debts.forEach((d,i)=>{
-    dB+=d[1]; dL+=d[2]; dP+=d[3];
-    $("dUtil"+i).textContent = d[2]>0 ? (d[1]/d[2]*100).toFixed(0)+"%" : "—";
-    $("dUtil"+i).style.color = d[2]>0 && d[1]/d[2]>0.9 ? "var(--red)" : d[2]>0 && d[1]/d[2]<0.3 ? "var(--green)" : "";
-    $("dMon"+i).textContent = d[3]>0 ? (d[1]/d[3]).toFixed(1) : "—";
-  });
-  $("debtTotal").textContent = money0(dB);
-  $("debtUtil").textContent = dL>0 ? (dB/dL*100).toFixed(1)+"%" : "—";
-  $("debtMonths").textContent = dP>0 ? (dB/dP).toFixed(1)+" mo" : "—";
+  window.exportJSON = function () {
+    download('waypoint-budget-plan.json', JSON.stringify(S, null, 2), 'application/json');
+    toast('JSON backup downloaded.');
+  };
 
-  // chart — skipped gracefully when the Chart.js CDN is unreachable (offline use),
-  // so a missing chart can never take autosave down with it
-  if(typeof Chart !== "undefined") try{
-    const labels = ["Bills (fixed)","Recurring", ...BUCKET_NAMES];
-    const data = [c.billsMo, c.recurMo, ...c.buckets.map(v=>v*52/12)];
-    if(!chart){
-      chart = new Chart($("mapChart"), {type:"doughnut",
-        data:{labels, datasets:[{data, backgroundColor:["#666f8d","#8d6a66",...BUCKET_NAMES.map((_,i)=>bColor(i))], borderColor:"#242836", borderWidth:2}]},
-        options:{plugins:{legend:{position:"right",labels:{color:"#e8eaf2",font:{size:11}}}}}});
-    } else { chart.data.labels = labels; chart.data.datasets[0].data = data; chart.data.datasets[0].backgroundColor = ["#666f8d","#8d6a66",...BUCKET_NAMES.map((_,i)=>bColor(i))]; chart.update(); }
-  }catch(e){}
-  save();
-}
-$("applyRaise").onchange = render;
-$("docTitle").onblur = ()=>{ S.title = $("docTitle").textContent.trim() || "Budget Planner"; document.title = S.title; save(); };
-$("docTitle").onkeydown = e=>{ if(e.key==="Enter"){ e.preventDefault(); e.target.blur(); } };
-refreshNames();
-applyTitle();
-buildStatic();
-render();
+  window.importJSON = function (file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        const incoming = normalize(JSON.parse(reader.result));
+        if (!confirm('Replace the current plan with "' + file.name + '"?')) return;
+        S = incoming;
+        GOAL_FACES.clear();
+        render();
+        toast('Plan imported.');
+      } catch (error) {
+        alert('That file is not a valid Waypoint JSON backup.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  window.downloadSnapshot = function () {
+    const clone = document.documentElement.cloneNode(true);
+    const initial = clone.querySelector('#initialState');
+    initial.textContent = JSON.stringify(S, null, 2).replace(/</g, '\\u003c');
+    clone.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.id === 'view-overview'));
+    clone.querySelectorAll('.nav-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.view === 'overview'));
+    download('Waypoint_Budget_Planner.html', '<!DOCTYPE html>\n' + clone.outerHTML, 'text/html');
+    toast('Standalone planner snapshot downloaded.');
+  };
+
+  window.resetPlanner = function () {
+    if (!confirm('Reset the planner to its built-in starter data? This replaces the autosaved plan on this device.')) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch (error) {}
+    S = normalize(readInitialState());
+    GOAL_FACES.clear();
+    render();
+    toast('Planner reset.');
+  };
+
+  if (window.addEventListener) window.addEventListener('resize', syncGoalCubes);
+  render();
+})();
 </script>
-</body></html>
+</body>
+</html>
