@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark">
-  <title>Waypoint Budget Planner</title>
+  <title>Budget Planner</title>
   <style>
     :root {
       --bg: #07111c;
@@ -81,6 +81,14 @@
     }
     .brand-name { font-weight: 750; letter-spacing: -.02em; }
     .brand-sub { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .plan-lens { display: flex; align-items: center; gap: 9px; min-width: max-content; }
+    .lens-label { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .lens-options { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.025); }
+    .lens-choice { min-height: 30px; border: 0; border-radius: 7px; padding: 5px 9px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .lens-choice.active.current { color: var(--text); background: var(--panel-2); }
+    .lens-choice.active.what-if { color: #16211e; background: var(--teal); }
+    .lens-name { max-width: 120px; overflow: hidden; color: var(--teal); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    body.scenario-on .save-dot { background: var(--teal); box-shadow: 0 0 12px rgba(81,214,179,.75); }
     .nav-tabs { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
     .nav-tab {
       border: 0;
@@ -365,6 +373,21 @@
     .stage-table tr:last-child td { border-bottom: 0; }
     .delta-up { color: var(--teal); }
     .delta-down { color: var(--red); }
+    .scenario-card { margin-bottom: 18px; border-color: rgba(81,214,179,.28); }
+    .scenario-card.previewing { box-shadow: 0 0 0 1px rgba(81,214,179,.12), var(--shadow); }
+    .scenario-head-actions { display: flex; align-items: center; gap: 10px; }
+    .preview-chip { display: inline-flex; align-items: center; min-height: 24px; border: 1px solid rgba(81,214,179,.32); border-radius: 999px; padding: 4px 9px; color: var(--teal); background: rgba(81,214,179,.07); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .scenario-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+    .scenario-allocation { margin-top: 15px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.018); }
+    .scenario-allocation-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; }
+    .scenario-custom-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; margin-top: 12px; }
+    .scenario-compare { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; overflow: hidden; margin-top: 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--line); }
+    .scenario-compare > div { padding: 12px; background: rgba(7,17,28,.56); }
+    .scenario-compare label { display: block; color: var(--muted); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+    .scenario-compare b { display: block; margin-top: 3px; font-size: 16px; }
+    .scenario-result-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 15px; }
+    .scenario-note { margin-top: 13px; padding: 10px 12px; border-left: 3px solid var(--teal); border-radius: 0 9px 9px 0; background: rgba(81,214,179,.06); color: var(--muted); font-size: 11px; }
+    .scenario-note strong { color: var(--text); }
 
     .tools-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; max-width: 100%; min-width: 0; gap: 14px; }
     .tool-card { width: 100%; max-width: 100%; min-width: 0; padding: 18px; }
@@ -384,7 +407,7 @@
     @media (max-width: 780px) {
       input:not([type="checkbox"]), select, textarea, .input, .input.compact, .select { font-size: 16px; touch-action: manipulation; }
       .topbar { position: static; flex-wrap: wrap; gap: 10px 14px; }
-      .nav-tabs { order: 3; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); width: 100%; max-width: 100%; gap: 3px; overflow: hidden; }
+      .nav-tabs { order: 3; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); flex: 0 0 100%; width: 100%; max-width: 100%; gap: 3px; overflow: hidden; }
       .nav-tab { min-width: 0; overflow: hidden; padding: 8px 5px; font-size: 11px; text-overflow: ellipsis; }
       .save-state { margin-left: auto; }
       main { padding-top: 24px; }
@@ -396,6 +419,8 @@
       .goal-stats > :first-child { grid-column: 1 / -1; }
       .stage-columns { grid-template-columns: 1fr; }
       .stage-summary { grid-template-columns: 1fr 1fr; }
+      .scenario-grid, .scenario-custom-grid { grid-template-columns: 1fr 1fr; }
+      .scenario-result-columns { grid-template-columns: 1fr; }
       .form-grid.three { grid-template-columns: 1fr 1fr; }
       .tools-grid { grid-template-columns: 1fr; }
       .tool-card p { min-height: 0; }
@@ -405,6 +430,11 @@
     @media (max-width: 560px) {
       .topbar { padding-inline: 14px; }
       .brand-sub { display: none; }
+      .plan-lens { flex: 1; min-width: 0; }
+      .lens-label, .lens-name { display: none; }
+      .lens-options { width: min(190px,100%); }
+      .lens-choice { min-width: 0; padding-inline: 6px; }
+      .scenario-head-actions .preview-chip { display: none; }
       .save-state span:last-child { display: none; }
       main { padding-inline: 12px; }
       .priority-banner { grid-template-columns: auto minmax(0,1fr); }
@@ -427,6 +457,8 @@
       .line-row { grid-template-columns: 24px minmax(90px,1fr) 94px 34px; gap: 6px; }
       .timeline-event { grid-template-columns: 28px minmax(0,1fr); }
       .event-date { grid-column: 2; text-align: left; }
+      .scenario-grid, .scenario-custom-grid, .scenario-compare { grid-template-columns: 1fr 1fr; }
+      .scenario-allocation-head { align-items: stretch; flex-direction: column; }
     }
     @media (max-width: 560px) {
       .nav-label-full { display: none; }
@@ -496,6 +528,13 @@
       .guidance.warning { border-color: #d9bd67; background: #fff9e8 !important; }
       .guidance.good-state { border-color: #79bca9; background: #eef9f5 !important; }
       .stage-insight { border-color: var(--accent); background: #fff5eb !important; }
+      .scenario-card { border-color: #79bca9; }
+      .scenario-card:not(.configured) { display: none !important; }
+      .scenario-allocation { border-color: var(--line-strong); background: #f7fafb !important; }
+      .scenario-compare { border-color: var(--line-strong); background: var(--line) !important; }
+      .scenario-compare > div { background: #f3f7f9 !important; }
+      .scenario-note { border-color: var(--teal); background: #eef9f5 !important; }
+      .preview-chip { color: #155d4e; border-color: #79bca9; background: #e3f5ef !important; }
       .timeline::before { background: var(--line-strong); }
       .event-dot { border-color: #fff; color: #10232d; }
       .stage-table-wrap { overflow: visible; }
@@ -507,13 +546,7 @@
 <body>
 <div class="app-shell">
   <header class="topbar">
-    <div class="brand" aria-label="Waypoint Budget Planner">
-      <div class="brand-mark" aria-hidden="true">W</div>
-      <div>
-        <div class="brand-name">Waypoint</div>
-        <div class="brand-sub">Budget planner</div>
-      </div>
-    </div>
+    <div class="plan-lens" id="planLens" aria-label="Choose the plan view"></div>
     <nav class="nav-tabs" aria-label="Planner sections">
       <button class="nav-tab active" data-view="overview" onclick="showView('overview')" aria-label="Overview"><span class="nav-label-full">Overview</span><span class="nav-label-short" aria-hidden="true">Home</span></button>
       <button class="nav-tab" data-view="cashflow" onclick="showView('cashflow')" aria-label="Cash flow"><span class="nav-label-full">Cash flow</span><span class="nav-label-short" aria-hidden="true">Cash</span></button>
@@ -657,6 +690,13 @@
         </div>
         <button class="btn" onclick="window.print()">Print plan</button>
       </div>
+      <section class="card card-pad scenario-card" id="scenarioCard" aria-labelledby="scenarioTitle">
+        <div class="card-head">
+          <div><p class="eyebrow">Preview only</p><h2 id="scenarioTitle">What-if simulator</h2><p>Test a raise or monthly change without altering the real plan.</p></div>
+          <div id="scenarioToggle"></div>
+        </div>
+        <div id="scenarioSimulator"></div>
+      </section>
       <section class="card card-pad" style="margin-bottom:18px" aria-labelledby="stageInspectorTitle">
         <div class="card-head">
           <div><p class="eyebrow">Snowball view</p><h2 id="stageInspectorTitle">Future Stage Inspector</h2><p>See where every bucket and goal sits immediately after a milestone changes the plan.</p></div>
@@ -692,7 +732,7 @@
       <div class="tools-grid">
         <section class="card tool-card"><h2>Save planner copy</h2><p>Downloads a new standalone HTML file with your current plan baked into it.</p><button class="btn primary" onclick="downloadSnapshot()">Download HTML snapshot</button></section>
         <section class="card tool-card"><h2>Export data</h2><p>Downloads a small JSON backup that can be imported into another copy.</p><button class="btn" onclick="exportJSON()">Download JSON</button></section>
-        <section class="card tool-card"><h2>Import data</h2><p>Load a Waypoint JSON backup. The imported plan replaces the current data after confirmation.</p><label class="btn" for="importFile">Choose JSON file</label><input class="file-input" type="file" id="importFile" accept="application/json,.json" onchange="importJSON(this.files[0]);this.value='' "></section>
+        <section class="card tool-card"><h2>Import data</h2><p>Load a Budget Planner JSON backup. The imported plan replaces the current data after confirmation.</p><label class="btn" for="importFile">Choose JSON file</label><input class="file-input" type="file" id="importFile" accept="application/json,.json" onchange="importJSON(this.files[0]);this.value='' "></section>
         <section class="card tool-card"><h2>Print / PDF</h2><p>Print a clean view of the plan or use your browser's Save as PDF option.</p><button class="btn" onclick="window.print()">Print plan</button></section>
         <section class="card tool-card"><h2>Start fresh</h2><p>Reset to the built-in starter plan. Download a snapshot first if you may want this version later.</p><button class="btn danger" onclick="resetPlanner()">Reset planner</button></section>
       </div>
@@ -707,6 +747,7 @@
   "version": 1,
   "priorityMode": true,
   "lenderMode": false,
+  "scenario": { "enabled": false, "name": "Raise preview", "hourlyRate": "", "hoursPerWeek": "", "monthlyIncomeChange": 0, "monthlyExpenseChange": 0, "allocationMode": "proportional", "bucketShares": [0,0,0,0] },
   "income": { "hourlyRate": 0, "hoursPerWeek": 0, "sideMonthly": 0, "deductionPercent": 0 },
   "bills": [
     { "id": "bill-housing-template", "name": "Housing", "amount": 0, "active": true },
@@ -760,6 +801,7 @@
     const base = readInitialState();
     const state = Object.assign({}, base, raw || {});
     state.income = Object.assign({}, base.income, state.income || {});
+    state.scenario = Object.assign({ enabled: false, name: "Raise preview", hourlyRate: "", hoursPerWeek: "", monthlyIncomeChange: 0, monthlyExpenseChange: 0, allocationMode: "proportional", bucketShares: [] }, base.scenario || {}, state.scenario || {});
     ["bills", "recurring", "buckets", "goals", "debts"].forEach(key => {
       if (!Array.isArray(state[key])) state[key] = deepClone(base[key] || []);
     });
@@ -772,6 +814,14 @@
       return goal;
     });
     state.debts = state.debts.map(item => Object.assign({ id: uid("debt"), name: "New debt", balance: 0, payment: 0, active: true }, item));
+    state.scenario.enabled = !!state.scenario.enabled;
+    state.scenario.name = String(state.scenario.name || "Raise preview");
+    state.scenario.hourlyRate = state.scenario.hourlyRate === "" || state.scenario.hourlyRate == null ? "" : Math.max(0, num(state.scenario.hourlyRate));
+    state.scenario.hoursPerWeek = state.scenario.hoursPerWeek === "" || state.scenario.hoursPerWeek == null ? "" : Math.max(0, num(state.scenario.hoursPerWeek));
+    state.scenario.monthlyIncomeChange = num(state.scenario.monthlyIncomeChange);
+    state.scenario.monthlyExpenseChange = num(state.scenario.monthlyExpenseChange);
+    state.scenario.allocationMode = state.scenario.allocationMode === "custom" ? "custom" : "proportional";
+    state.scenario.bucketShares = Array.from({ length: state.buckets.length }, (_, index) => clamp((state.scenario.bucketShares || [])[index] || 0, 0, 100));
     state.priorityMode = state.priorityMode !== false;
     state.lenderMode = !!state.lenderMode;
     state.version = 1;
@@ -814,7 +864,7 @@
     const netWeekly = grossWeekly * (1 - clamp(state.income.deductionPercent, 0, 100) / 100);
     const billsMonthly = sum(state.bills.filter(item => item.active !== false).map(item => item.amount));
     const recurringMonthly = sum(state.recurring.filter(item => item.active !== false).map(item => item.amount));
-    const expensesMonthly = billsMonthly + recurringMonthly + num(addedMonthlyCosts);
+    const expensesMonthly = Math.max(0, billsMonthly + recurringMonthly + num(addedMonthlyCosts) + num(state._scenarioExpenseMonthly));
     const expenseWeekly = expensesMonthly * 12 / 52;
     return {
       grossWeekly,
@@ -1035,13 +1085,58 @@
     return (weeks / 52).toFixed(1) + " years";
   }
 
-  function currentSnapshot() {
-    const flow = cashflow(S, 0);
-    const planned = sum(S.buckets.map(bucket => Math.max(0, num(bucket.weekly))));
-    const sim = simulation();
-    const effectiveBuckets = baseBucketsForPool(flow.pool);
-    return { flow, planned, remainder: flow.pool - planned, sim, effectiveBuckets };
+  function buildScenarioState(baseState) {
+    const state = deepClone(baseState);
+    const scenario = baseState.scenario;
+    if (scenario.hourlyRate !== "") state.income.hourlyRate = Math.max(0, num(scenario.hourlyRate));
+    if (scenario.hoursPerWeek !== "") state.income.hoursPerWeek = Math.max(0, num(scenario.hoursPerWeek));
+    state.income.sideMonthly = Math.max(0, num(baseState.income.sideMonthly) + num(scenario.monthlyIncomeChange));
+    state._scenarioExpenseMonthly = num(scenario.monthlyExpenseChange);
+
+    const baseFlow = cashflow(baseState, 0);
+    const scenarioFlow = cashflow(state, 0);
+    const extraWeekly = Math.max(0, Math.max(0, scenarioFlow.pool) - Math.max(0, baseFlow.pool));
+    let weights = scenario.allocationMode === "custom"
+      ? state.buckets.map((bucket, index) => clamp(scenario.bucketShares[index], 0, 100))
+      : state.buckets.map(bucket => Math.max(0, num(bucket.weekly)));
+    let weightTotal = sum(weights);
+    if (weightTotal <= .005 && state.buckets.length) {
+      weights = state.buckets.map(() => 1);
+      weightTotal = state.buckets.length;
+    }
+    state.buckets.forEach((bucket, index) => {
+      bucket.weekly = Math.max(0, num(bucket.weekly)) + (weightTotal > 0 ? extraWeekly * weights[index] / weightTotal : 0);
+    });
+    state._scenarioExtraWeekly = extraWeekly;
+    return state;
   }
+
+  function snapshotForState(state, isScenario) {
+    const baseState = S;
+    S = state;
+    try {
+      const flow = cashflow(S, 0);
+      const planned = sum(S.buckets.map(bucket => Math.max(0, num(bucket.weekly))));
+      const sim = simulation();
+      const effectiveBuckets = baseBucketsForPool(flow.pool);
+      return {
+        flow,
+        planned,
+        remainder: flow.pool - planned,
+        sim,
+        effectiveBuckets,
+        bucketWeekly: S.buckets.map(bucket => Math.max(0, num(bucket.weekly))),
+        isScenario: !!isScenario,
+        scenarioExtraWeekly: num(S._scenarioExtraWeekly)
+      };
+    } finally {
+      S = baseState;
+    }
+  }
+
+  function baseSnapshot() { return snapshotForState(S, false); }
+  function whatIfSnapshot() { return snapshotForState(buildScenarioState(S), true); }
+  function currentSnapshot() { return S.scenario.enabled ? whatIfSnapshot() : baseSnapshot(); }
 
   function modeBannerHTML(compact) {
     const on = S.priorityMode;
@@ -1052,6 +1147,72 @@
       '</span></div>' +
       '<label class="switch"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="setPriorityMode(this.checked)"><span class="switch-track"></span><span class="sr-only">Toggle Priority Mode</span></label>' +
       '</div>';
+  }
+
+  function renderPlanLens() {
+    const enabled = S.scenario.enabled;
+    document.body.classList.toggle('scenario-on', enabled);
+    $("planLens").innerHTML =
+      '<span class="lens-label">Plan view</span><div class="lens-options" role="group" aria-label="Current or what-if plan">' +
+        '<button class="lens-choice current ' + (!enabled ? 'active' : '') + '" onclick="setScenarioPreview(false)" aria-pressed="' + (!enabled) + '">Current</button>' +
+        '<button class="lens-choice what-if ' + (enabled ? 'active' : '') + '" onclick="setScenarioPreview(true)" aria-pressed="' + enabled + '">What-if</button>' +
+      '</div><span class="lens-name">' + escapeHTML(S.scenario.name) + '</span>';
+  }
+
+  function scenarioTimeChange(baseWeeks, scenarioWeeks) {
+    if (baseWeeks == null && scenarioWeeks == null) return '—';
+    if (baseWeeks == null && scenarioWeeks != null) return 'Now reachable';
+    if (baseWeeks != null && scenarioWeeks == null) return 'No longer funded';
+    const difference = num(baseWeeks) - num(scenarioWeeks);
+    if (Math.abs(difference) < .05) return 'No change';
+    return formatETA(Math.abs(difference)) + (difference > 0 ? ' sooner' : ' later');
+  }
+
+  function renderScenarioSimulator(base, preview) {
+    const scenario = S.scenario;
+    const enabled = scenario.enabled;
+    const configured = scenario.hourlyRate !== '' || scenario.hoursPerWeek !== '' || Math.abs(num(scenario.monthlyIncomeChange)) > .005 || Math.abs(num(scenario.monthlyExpenseChange)) > .005;
+    const poolDelta = preview.flow.pool - base.flow.pool;
+    const incomeDelta = preview.flow.netMonthly - base.flow.netMonthly;
+    const goalsEarlier = S.goals.filter((goal, index) => {
+      const before = base.sim.finishWeek[index];
+      const after = preview.sim.finishWeek[index];
+      return (before == null && after != null) || (before != null && after != null && after < before - .05);
+    }).length;
+
+    $("scenarioCard").classList.toggle('previewing', enabled);
+    $("scenarioCard").classList.toggle('configured', configured);
+    $("scenarioToggle").innerHTML = '<div class="scenario-head-actions"><span class="preview-chip">Never changes current plan</span><label class="switch"><input type="checkbox" class="scenario-control" ' + (enabled ? 'checked' : '') + ' onchange="setScenarioPreview(this.checked)"><span class="switch-track"></span><span class="sr-only">Show what-if plan across the app</span></label></div>';
+
+    const customFields = scenario.allocationMode === 'custom'
+      ? '<div class="scenario-custom-grid">' + S.buckets.map((bucket, index) =>
+          '<div class="field"><label>' + escapeHTML(bucket.name) + ' weight</label><div class="field-inline"><input class="input compact scenario-control" type="number" min="0" max="100" step="5" value="' + num(scenario.bucketShares[index]) + '" onchange="setScenarioBucketShare(' + index + ',this.value)"><span class="suffix">%</span></div></div>'
+        ).join('') + '</div>'
+      : '';
+
+    const bucketRows = S.buckets.map((bucket, index) => {
+      const before = base.effectiveBuckets[index] || 0;
+      const after = preview.effectiveBuckets[index] || 0;
+      return '<tr><td><span class="bucket-color" style="background:' + COLORS[index % COLORS.length] + '"></span> ' + escapeHTML(bucket.name) + '</td><td>' + money2(before) + '</td><td>' + money2(after) + '</td><td>' + stageDeltaHTML(after - before) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4">Add a bucket to distribute new AP.</td></tr>';
+
+    const goalRows = S.goals.map((goal, index) =>
+      '<tr><td>' + escapeHTML(goal.name) + '</td><td>' + escapeHTML(formatETA(base.sim.finishWeek[index])) + '</td><td>' + escapeHTML(formatETA(preview.sim.finishWeek[index])) + '</td><td>' + escapeHTML(scenarioTimeChange(base.sim.finishWeek[index], preview.sim.finishWeek[index])) + '</td></tr>'
+    ).join('') || '<tr><td colspan="4">Add goals to compare completion dates.</td></tr>';
+
+    $("scenarioSimulator").innerHTML =
+      '<div class="scenario-grid">' +
+        '<div class="field"><label>Proposed hourly rate</label><div class="field-inline"><span class="prefix">$</span><input class="input scenario-control" type="number" min="0" step="0.50" placeholder="Current ' + escapeHTML(money2(S.income.hourlyRate)) + '" value="' + escapeHTML(scenario.hourlyRate) + '" onchange="setScenario(\'hourlyRate\',this.value)"><span class="suffix">/hr</span></div></div>' +
+        '<div class="field"><label>Proposed weekly hours</label><div class="field-inline"><input class="input scenario-control" type="number" min="0" step="0.5" placeholder="Current ' + num(S.income.hoursPerWeek) + '" value="' + escapeHTML(scenario.hoursPerWeek) + '" onchange="setScenario(\'hoursPerWeek\',this.value)"><span class="suffix">hours</span></div></div>' +
+        '<div class="field"><label>Other income change</label><div class="field-inline"><span class="prefix">$</span><input class="input scenario-control" type="number" step="25" value="' + num(scenario.monthlyIncomeChange) + '" onchange="setScenario(\'monthlyIncomeChange\',this.value)"><span class="suffix">/month</span></div><p class="field-explainer">Bonus, side income, or another monthly change.</p></div>' +
+        '<div class="field"><label>Monthly cost change</label><div class="field-inline"><span class="prefix">$</span><input class="input scenario-control" type="number" step="25" value="' + num(scenario.monthlyExpenseChange) + '" onchange="setScenario(\'monthlyExpenseChange\',this.value)"><span class="suffix">/month</span></div><p class="field-explainer">Positive adds a cost; negative previews a cut.</p></div>' +
+      '</div>' +
+      '<div class="scenario-allocation"><div class="scenario-allocation-head"><div><strong>Where should new AP go?</strong><p class="tiny" style="margin:3px 0 0">The easy default follows the current bucket mix. If every bucket is $0, it splits evenly.</p></div><div class="field" style="min-width:min(100%,250px)"><select class="select scenario-control" onchange="setScenario(\'allocationMode\',this.value)"><option value="proportional" ' + (scenario.allocationMode === 'proportional' ? 'selected' : '') + '>Follow current buckets</option><option value="custom" ' + (scenario.allocationMode === 'custom' ? 'selected' : '') + '>Use custom weights</option></select></div></div>' + customFields + '</div>' +
+      '<div class="scenario-compare"><div><label>Weekly AP</label><b>' + money2(base.flow.pool) + ' → ' + money2(preview.flow.pool) + '</b></div><div><label>AP change</label><b class="' + (poolDelta >= 0 ? 'delta-up' : 'delta-down') + '">' + (poolDelta >= 0 ? '+' : '−') + money2(Math.abs(poolDelta)) + '/wk</b></div><div><label>Take-home change</label><b class="' + (incomeDelta >= 0 ? 'delta-up' : 'delta-down') + '">' + (incomeDelta >= 0 ? '+' : '−') + money2(Math.abs(incomeDelta)) + '/mo</b></div><div><label>Goals earlier</label><b>' + goalsEarlier + '</b></div></div>' +
+      '<div class="scenario-note"><strong>' + (enabled ? 'What-if view is on across every page.' : 'The app is still showing the Current plan.') + '</strong> These values are preview-only and are never copied into income, bills, buckets, or goals. Use the Current / What-if control at the top at any time.</div>' +
+      '<div class="scenario-result-columns"><div><div class="card-head" style="margin-bottom:7px"><div><h3>Bucket landing</h3><p>Effective weekly amounts after the change and any scaling.</p></div></div><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Bucket</th><th>Current</th><th>What-if</th><th>Change</th></tr></thead><tbody>' + bucketRows + '</tbody></table></div></div>' +
+      '<div><div class="card-head" style="margin-bottom:7px"><div><h3>Goal landing</h3><p>Completion pace using the same priority rules.</p></div></div><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Goal</th><th>Current</th><th>What-if</th><th>Difference</th></tr></thead><tbody>' + goalRows + '</tbody></table></div></div></div>' +
+      '<div class="button-row" style="margin-top:14px"><button class="btn" onclick="resetScenario()">Clear what-if</button></div>';
   }
 
   function renderOverview(snapshot) {
@@ -1068,9 +1229,10 @@
     let segments = "";
     let legend = "";
     S.buckets.forEach((bucket, index) => {
-      const width = Math.max(0, num(bucket.weekly)) / totalForBar * 100;
+      const viewedWeekly = snapshot.bucketWeekly[index] || 0;
+      const width = viewedWeekly / totalForBar * 100;
       segments += '<span class="allocation-segment" style="width:' + width.toFixed(3) + '%;background:' + COLORS[index % COLORS.length] + '" aria-hidden="true"></span>';
-      legend += '<span class="legend-item"><span class="swatch" style="background:' + COLORS[index % COLORS.length] + '"></span>' + escapeHTML(bucket.name) + ' ' + money(bucket.weekly) + '</span>';
+      legend += '<span class="legend-item"><span class="swatch" style="background:' + COLORS[index % COLORS.length] + '"></span>' + escapeHTML(bucket.name) + ' ' + money(viewedWeekly) + '</span>';
     });
     if (snapshot.remainder > .005) {
       segments += '<span class="allocation-segment" style="width:' + (snapshot.remainder / totalForBar * 100).toFixed(3) + '%;background:#334759" aria-hidden="true"></span>';
@@ -1081,7 +1243,8 @@
       '<p class="tiny">AP is shown as weekly money and assigned to buckets in $5 increments.</p>' +
       '<div class="allocation-track" role="img" aria-label="Weekly AP allocation">' + segments + '</div>' +
       '<div class="allocation-legend">' + legend + '</div>';
-    $("bankRemainderButton").disabled = snapshot.remainder < 4.995 || S.buckets.length === 0;
+    $("bankRemainderButton").disabled = snapshot.isScenario || snapshot.remainder < 4.995 || S.buckets.length === 0;
+    $("bankRemainderButton").textContent = snapshot.isScenario ? "Preview only" : "Send remainder to Savings";
     renderBuckets(snapshot);
     renderFundingNow(snapshot);
     renderAlerts(snapshot);
@@ -1100,7 +1263,8 @@
       const reserveTarget = Math.max(0, num(bucket.reserveTarget));
       const reserveBalance = Math.max(0, num(bucket.reserveBalance));
       const reservePct = reserveTarget > 0 ? Math.min(100, reserveBalance / reserveTarget * 100) : 100;
-      const status = reserveTarget > 0 ? money(reserveBalance) + ' / ' + money(reserveTarget) + ' reserve' : 'No reserve gate';
+      const previewAmount = snapshot.bucketWeekly[index] || 0;
+      const status = (reserveTarget > 0 ? money(reserveBalance) + ' / ' + money(reserveTarget) + ' reserve' : 'No reserve gate') + (snapshot.isScenario ? ' · preview ' + money2(previewAmount) + '/wk' : '');
       return '<div class="bucket-row">' +
         '<div class="bucket-identity"><span class="bucket-color" style="background:' + COLORS[index % COLORS.length] + '"></span><div class="bucket-title"><strong>' + escapeHTML(bucket.name) + '</strong><span>' + status + '</span></div></div>' +
         '<div class="mini-track" aria-hidden="true"><div class="mini-fill" style="width:' + reservePct + '%;background:' + COLORS[index % COLORS.length] + '"></div></div>' +
@@ -1472,7 +1636,8 @@
       '<div class="stage-panel"><h3>Goal position</h3><p class="tiny">This shows the resulting dollars—not just the percentages—after the selected milestone.</p><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Goal</th><th>State</th><th>Funding / wk</th><th>Δ stage</th><th>Remaining</th></tr></thead><tbody>' + goalRows + '</tbody></table></div></div></div>';
   }
 
-  function renderTimeline(snapshot) {
+  function renderTimeline(snapshot, comparison) {
+    renderScenarioSimulator(comparison.base, comparison.whatIf);
     renderStageInspector(snapshot);
     const nowEvent = { week: 0, type: "now", title: S.priorityMode ? "Priority plan is active" : "Shared plan is active", copy: S.priorityMode ? "The first unfinished Priority goal receives its dedicated mix now." : "All unfinished goals draw from the shared bucket pool now." };
     const events = [nowEvent].concat(snapshot.sim.events).slice(0, 80);
@@ -1646,11 +1811,13 @@
 
   function render() {
     S = normalize(S);
-    const snapshot = currentSnapshot();
+    const comparison = { base: baseSnapshot(), whatIf: whatIfSnapshot() };
+    const snapshot = S.scenario.enabled ? comparison.whatIf : comparison.base;
+    renderPlanLens();
     renderOverview(snapshot);
     renderCashflow(snapshot);
     renderGoals(snapshot);
-    renderTimeline(snapshot);
+    renderTimeline(snapshot, comparison);
     renderTools();
     saveState();
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncGoalCubes);
@@ -1679,6 +1846,30 @@
     window.showView('timeline');
   };
 
+  window.setScenarioPreview = function (checked) {
+    S.scenario.enabled = !!checked;
+    futureStageIndex = 0;
+    render();
+  };
+  window.setScenario = function (field, value) {
+    if (field === 'hourlyRate' || field === 'hoursPerWeek') S.scenario[field] = value === '' ? '' : Math.max(0, num(value));
+    else if (field === 'monthlyIncomeChange' || field === 'monthlyExpenseChange') S.scenario[field] = num(value);
+    else if (field === 'allocationMode') S.scenario[field] = value === 'custom' ? 'custom' : 'proportional';
+    else S.scenario[field] = value;
+    futureStageIndex = 0;
+    render();
+  };
+  window.setScenarioBucketShare = function (index, value) {
+    S.scenario.bucketShares[index] = clamp(value, 0, 100);
+    futureStageIndex = 0;
+    render();
+  };
+  window.resetScenario = function () {
+    S.scenario = { enabled: false, name: 'Raise preview', hourlyRate: '', hoursPerWeek: '', monthlyIncomeChange: 0, monthlyExpenseChange: 0, allocationMode: 'proportional', bucketShares: S.buckets.map(() => 0) };
+    futureStageIndex = 0;
+    render();
+  };
+
   window.setPriorityMode = function (checked) { S.priorityMode = !!checked; render(); };
   window.setLenderMode = function (checked) { S.lenderMode = !!checked; render(); };
   window.setIncome = function (key, value) { S.income[key] = num(value); render(); };
@@ -1696,6 +1887,7 @@
   window.addBucket = function () {
     S.buckets.push({ id: uid('bucket'), name: 'New bucket', weekly: 0, reserveTarget: 0, reserveBalance: 0 });
     S.goals.forEach(goal => goal.pulls.push(0));
+    S.scenario.bucketShares.push(0);
     render();
     const index = S.buckets.length - 1;
     const name = prompt('Name this bucket:', S.buckets[index].name);
@@ -1718,6 +1910,7 @@
     if (!confirm('Remove the "' + bucket.name + '" bucket and its settings from every goal?')) return;
     S.buckets.splice(index, 1);
     S.goals.forEach(goal => goal.pulls.splice(index, 1));
+    S.scenario.bucketShares.splice(index, 1);
     render();
   };
   window.bankRemainder = function () {
@@ -1836,7 +2029,7 @@
   }
 
   window.exportJSON = function () {
-    download('waypoint-budget-plan.json', JSON.stringify(S, null, 2), 'application/json');
+    download('budget-plan.json', JSON.stringify(S, null, 2), 'application/json');
     toast('JSON backup downloaded.');
   };
 
@@ -1852,7 +2045,7 @@
         render();
         toast('Plan imported.');
       } catch (error) {
-        alert('That file is not a valid Waypoint JSON backup.');
+        alert('That file is not a valid Budget Planner JSON backup.');
       }
     };
     reader.readAsText(file);
@@ -1864,7 +2057,7 @@
     initial.textContent = JSON.stringify(S, null, 2).replace(/</g, '\\u003c');
     clone.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.id === 'view-overview'));
     clone.querySelectorAll('.nav-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.view === 'overview'));
-    download('Waypoint_Budget_Planner.html', '<!DOCTYPE html>\n' + clone.outerHTML, 'text/html');
+    download('Budget_Planner.html', '<!DOCTYPE html>\n' + clone.outerHTML, 'text/html');
     toast('Standalone planner snapshot downloaded.');
   };
 
