@@ -214,6 +214,33 @@
     .legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
     .swatch { width: 8px; height: 8px; border-radius: 50%; }
 
+    .spending-card { margin-top: 18px; }
+    .chart-controls { display: flex; align-items: center; justify-content: flex-end; gap: 9px; flex-wrap: wrap; }
+    .chart-toggle { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(74px, auto); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.025); }
+    .chart-choice { min-height: 32px; border: 0; border-radius: 7px; padding: 6px 10px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .chart-choice:hover { color: var(--text); background: rgba(255,255,255,.035); }
+    .chart-choice.active { color: #17202a; background: var(--accent); }
+    .spending-layout { display: grid; grid-template-columns: minmax(220px,.72fr) minmax(280px,1.28fr); gap: clamp(22px,4vw,54px); align-items: center; }
+    .donut-wrap { position: relative; width: min(230px, 70vw); aspect-ratio: 1; margin: 0 auto; }
+    .donut-chart { position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+    .donut-chart::after { content: ""; position: absolute; inset: 22%; border: 1px solid var(--line); border-radius: 50%; background: var(--panel); box-shadow: 0 8px 30px rgba(0,0,0,.22); }
+    .donut-center { position: absolute; inset: 29%; z-index: 1; display: grid; place-content: center; text-align: center; pointer-events: none; }
+    .donut-center b { display: block; font-size: clamp(20px,3vw,31px); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .donut-center span { color: var(--muted); font-size: 10px; }
+    .chart-legend { display: grid; gap: 4px; }
+    .chart-legend-row { display: grid; grid-template-columns: 12px minmax(90px,1fr) auto auto; align-items: center; gap: 10px; min-height: 35px; padding: 7px 9px; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .chart-legend-row:last-child { border-bottom: 0; }
+    .chart-legend-row .swatch { width: 10px; height: 10px; }
+    .chart-legend-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chart-legend-row .percent { min-width: 42px; color: var(--muted); text-align: right; }
+    .spending-insight { margin: 14px 0 0; padding: 10px 12px; border: 1px solid rgba(81,214,179,.2); border-radius: 11px; background: rgba(81,214,179,.045); color: var(--muted); font-size: 11px; }
+    .spending-bars { display: grid; gap: 13px; }
+    .spending-bar-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px; font-size: 12px; }
+    .spending-bar-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .spending-bar-head span { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .spending-bar-track { height: 12px; overflow: hidden; border-radius: 999px; background: #08131f; box-shadow: inset 0 0 0 1px var(--line); }
+    .spending-bar-fill { height: 100%; min-width: 2px; border-radius: inherit; transition: width .25s ease; }
+
     .alert-list { display: grid; gap: 9px; }
     .alert-item { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
     .alert-item:last-child { border-bottom: 0; padding-bottom: 0; }
@@ -268,6 +295,8 @@
     .cash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .line-list { display: grid; gap: 8px; }
     .line-row { display: grid; grid-template-columns: 28px minmax(130px, 1fr) 130px 38px; gap: 8px; align-items: center; }
+    .expense-row { grid-template-columns: 28px minmax(120px,1fr) minmax(145px,.8fr) 124px 38px; }
+    .expense-category { min-width: 0; }
     .check { width: 17px; height: 17px; accent-color: var(--teal); }
     .total-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); font-size: 12px; }
     .total-line b { font-size: 16px; font-variant-numeric: tabular-nums; }
@@ -413,6 +442,7 @@
       main { padding-top: 24px; }
       .page-heading { align-items: start; flex-direction: column; }
       .metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .spending-layout { grid-template-columns: 1fr; }
       .bucket-row { grid-template-columns: minmax(120px,1fr) 100px 34px 34px; }
       .bucket-row .mini-track { display: none; }
       .goal-stats { grid-template-columns: 1fr 1fr 1fr; }
@@ -455,6 +485,18 @@
       .allocation-row { grid-template-columns: minmax(0,1fr) 92px; }
       .allocation-result { grid-column: 1 / -1; text-align: left; padding-left: 19px; }
       .line-row { grid-template-columns: 24px minmax(90px,1fr) 94px 34px; gap: 6px; }
+      .expense-row { grid-template-columns: 24px minmax(0,1fr) 34px; gap: 8px; align-items: center; }
+      .expense-row > .check { grid-column: 1; grid-row: 1; }
+      .expense-name { grid-column: 2; grid-row: 1; }
+      .expense-remove, .expense-row > .btn:last-child { grid-column: 3; grid-row: 1; }
+      .expense-category { grid-column: 2 / 4; grid-row: 2; }
+      .expense-amount { grid-column: 2 / 4; grid-row: 3; }
+      .spending-card .card-head { flex-direction: column; align-items: stretch; }
+      .chart-controls { width: 100%; justify-content: stretch; }
+      .chart-toggle { flex: 1; grid-auto-columns: minmax(0,1fr); }
+      .chart-choice { padding-inline: 7px; }
+      .chart-legend-row { grid-template-columns: 12px minmax(70px,1fr) auto; }
+      .chart-legend-row .percent { display: none; }
       .timeline-event { grid-template-columns: 28px minmax(0,1fr); }
       .event-date { grid-column: 2; text-align: left; }
       .scenario-grid, .scenario-custom-grid, .scenario-compare { grid-template-columns: 1fr 1fr; }
@@ -493,7 +535,7 @@
       body { min-width: 0; font-size: 10.5pt; }
       *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; text-shadow: none !important; }
       .app-shell { min-height: 0; overflow: visible; }
-      .topbar, .button-row, .btn, .switch, .goal-cube-nav, .notice, #view-tools { display: none !important; }
+      .topbar, .button-row, .btn, .switch, .goal-cube-nav, .notice, #view-tools, .chart-controls { display: none !important; }
       main { width: 100%; max-width: none; padding: 0; }
       .view { display: block !important; width: 100%; animation: none !important; break-after: page; page-break-after: always; }
       #view-timeline { break-after: auto; page-break-after: auto; }
@@ -511,7 +553,7 @@
       .priority-banner.off { border-color: #8bb4d5; background: #eff7fc !important; }
       .mode-icon { color: #9c4d18; background: #ffe5d1 !important; }
       .priority-banner.off .mode-icon { color: #245f94; background: #dceefa !important; }
-      .allocation-track, .mini-track, .goal-progress { border-color: var(--line); background: #e7eef1 !important; box-shadow: inset 0 0 0 1px var(--line); }
+      .allocation-track, .mini-track, .goal-progress, .spending-bar-track { border-color: var(--line); background: #e7eef1 !important; box-shadow: inset 0 0 0 1px var(--line); }
       .bucket-row, .line-row, .queue-row, .stage-table th, .stage-table td { border-color: var(--line); }
       .input, .select { border-color: var(--line-strong); background: #fff !important; color: var(--text) !important; }
       #futureStageSelect { min-height: 0; border: 0; padding: 0; appearance: none; background: transparent !important; font-weight: 700; }
@@ -573,6 +615,27 @@
 
       <div id="priorityBanner"></div>
       <div id="summaryMetrics" class="metric-grid" aria-label="Financial summary"></div>
+
+      <section class="card card-pad spending-card" aria-labelledby="spendingTitle">
+        <div class="card-head">
+          <div>
+            <p class="eyebrow">Money going out</p>
+            <h2 id="spendingTitle">Monthly spending</h2>
+            <p>See the active expenses in Cash Flow by smart category or by individual item.</p>
+          </div>
+          <div class="chart-controls" aria-label="Spending chart controls">
+            <div class="chart-toggle" role="group" aria-label="Group spending by">
+              <button class="chart-choice" id="chartGroupCategory" onclick="setHomeChartGroup('category')">Categories</button>
+              <button class="chart-choice" id="chartGroupItem" onclick="setHomeChartGroup('item')">Bills</button>
+            </div>
+            <div class="chart-toggle" role="group" aria-label="Chart style">
+              <button class="chart-choice" id="chartModeDonut" onclick="setHomeChartMode('donut')">Donut</button>
+              <button class="chart-choice" id="chartModeBar" onclick="setHomeChartMode('bar')">Bars</button>
+            </div>
+          </div>
+        </div>
+        <div id="spendingChart"></div>
+      </section>
 
       <div class="dashboard-grid" style="margin-top:18px">
         <div class="stack">
@@ -642,14 +705,14 @@
         </section>
         <section class="card card-pad" aria-labelledby="billsTitle">
           <div class="card-head">
-            <div><h2 id="billsTitle">Fixed bills</h2><p>Long-term commitments such as housing and utilities.</p></div>
+            <div><h2 id="billsTitle">Fixed bills</h2><p>Long-term commitments such as housing and utilities. Names are categorized automatically; you can override each one.</p></div>
             <button class="btn" onclick="addExpense('bills')">+ Add</button>
           </div>
           <div id="billsList" class="line-list"></div>
         </section>
         <section class="card card-pad" aria-labelledby="recurringTitle">
           <div class="card-head">
-            <div><h2 id="recurringTitle">Recurring &amp; removable</h2><p>Untick an item to simulate canceling or pausing it.</p></div>
+            <div><h2 id="recurringTitle">Recurring &amp; removable</h2><p>Untick an item to pause it. Names are categorized automatically; you can override each one.</p></div>
             <button class="btn" onclick="addExpense('recurring')">+ Add</button>
           </div>
           <div id="recurringList" class="line-list"></div>
@@ -747,18 +810,20 @@
   "version": 1,
   "priorityMode": true,
   "lenderMode": false,
+  "homeChartMode": "donut",
+  "homeChartGroup": "category",
   "scenario": { "enabled": false, "name": "Raise preview", "hourlyRate": "", "hoursPerWeek": "", "monthlyIncomeChange": 0, "monthlyExpenseChange": 0, "allocationMode": "proportional", "bucketShares": [0,0,0,0] },
   "income": { "hourlyRate": 0, "hoursPerWeek": 0, "sideMonthly": 0, "deductionPercent": 0 },
   "bills": [
-    { "id": "bill-housing-template", "name": "Housing", "amount": 0, "active": true },
-    { "id": "bill-utilities-template", "name": "Utilities", "amount": 0, "active": true },
-    { "id": "bill-food-template", "name": "Food", "amount": 0, "active": true },
-    { "id": "bill-transport-template", "name": "Transportation", "amount": 0, "active": true },
-    { "id": "bill-insurance-template", "name": "Insurance", "amount": 0, "active": true }
+    { "id": "bill-housing-template", "name": "Housing", "amount": 0, "active": true, "category": "auto" },
+    { "id": "bill-utilities-template", "name": "Utilities", "amount": 0, "active": true, "category": "auto" },
+    { "id": "bill-food-template", "name": "Food", "amount": 0, "active": true, "category": "auto" },
+    { "id": "bill-transport-template", "name": "Transportation", "amount": 0, "active": true, "category": "auto" },
+    { "id": "bill-insurance-template", "name": "Insurance", "amount": 0, "active": true, "category": "auto" }
   ],
   "recurring": [
-    { "id": "rec-subscriptions-template", "name": "Subscriptions", "amount": 0, "active": true },
-    { "id": "rec-memberships-template", "name": "Memberships", "amount": 0, "active": true }
+    { "id": "rec-subscriptions-template", "name": "Subscriptions", "amount": 0, "active": true, "category": "auto" },
+    { "id": "rec-memberships-template", "name": "Memberships", "amount": 0, "active": true, "category": "auto" }
   ],
   "buckets": [
     { "id": "bucket-priority-template", "name": "Priority goal", "weekly": 0, "reserveTarget": 0, "reserveBalance": 0 },
@@ -777,6 +842,21 @@
 
   const STORAGE_KEY = "waypoint-budget-planner-public-template-v1";
   const COLORS = ["#51d6b3", "#69a9ff", "#f5a66b", "#a98df7", "#f2cc60", "#ff7a82", "#54c7ec", "#b5d56a"];
+  const EXPENSE_CATEGORIES = ["Housing", "Utilities", "Food", "Transport", "Insurance & health", "Phone & internet", "Media", "Subscriptions", "Childcare & education", "Debt", "Personal", "Other"];
+  const CATEGORY_COLORS = {
+    "Housing": "#51d6b3",
+    "Utilities": "#69a9ff",
+    "Food": "#f5a66b",
+    "Transport": "#a98df7",
+    "Insurance & health": "#f2cc60",
+    "Phone & internet": "#54c7ec",
+    "Media": "#ff7a82",
+    "Subscriptions": "#b5d56a",
+    "Childcare & education": "#c58ce8",
+    "Debt": "#e18f5d",
+    "Personal": "#7fc8a9",
+    "Other": "#8297a2"
+  };
   const GOAL_FACES = new Map();
   let activeView = "overview";
   let futureStageIndex = 0;
@@ -792,6 +872,27 @@
   const uid = prefix => prefix + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
   const deepClone = value => JSON.parse(JSON.stringify(value));
 
+  function inferExpenseCategory(name) {
+    const value = String(name || "").trim().toLowerCase();
+    if (!value) return "Other";
+    if (/natural gas|heating gas|electric(?:ity)?|\bpower\b|\bwater\b|sewer|trash|garbage|utility|utilities|heating/.test(value)) return "Utilities";
+    if (/netflix|spotify|hulu|disney\+?|youtube|prime video|apple (?:music|tv)|paramount|peacock|hbo|\bmax\b|stream(?:ing)?|media/.test(value)) return "Media";
+    if (/rent|mortgage|housing|apartment|\bhoa\b|property tax|home payment/.test(value)) return "Housing";
+    if (/grocery|groceries|supermarket|\bfood\b|restaurant|dining|meal|doordash|uber eats|ubereats|grubhub/.test(value)) return "Food";
+    if (/\bgas\b|fuel|car|auto|vehicle|parking|toll|ez-?pass|uber|lyft|transit|\bbus\b|\btrain\b|transport/.test(value)) return "Transport";
+    if (/insurance|health|medical|doctor|dental|vision|pharmacy|prescription|hospital/.test(value)) return "Insurance & health";
+    if (/internet|phone|mobile|wireless|cellular|verizon|at&t|t-mobile|tmobile|comcast|xfinity|spectrum/.test(value)) return "Phone & internet";
+    if (/daycare|childcare|school|tuition|education|college|preschool/.test(value)) return "Childcare & education";
+    if (/loan|debt|credit card|student loan|minimum payment/.test(value)) return "Debt";
+    if (/subscription|membership|software|cloud|adobe|icloud|gym|amazon prime/.test(value)) return "Subscriptions";
+    if (/clothing|personal|salon|hair|beauty|entertainment|hobby|pet/.test(value)) return "Personal";
+    return "Other";
+  }
+
+  function expenseCategory(item) {
+    return item && EXPENSE_CATEGORIES.includes(item.category) ? item.category : inferExpenseCategory(item && item.name);
+  }
+
   function readInitialState() {
     try { return JSON.parse($("initialState").textContent); }
     catch (error) { return {}; }
@@ -805,8 +906,8 @@
     ["bills", "recurring", "buckets", "goals", "debts"].forEach(key => {
       if (!Array.isArray(state[key])) state[key] = deepClone(base[key] || []);
     });
-    state.bills = state.bills.map(item => Object.assign({ id: uid("bill"), name: "New bill", amount: 0, active: true }, item));
-    state.recurring = state.recurring.map(item => Object.assign({ id: uid("rec"), name: "New recurring item", amount: 0, active: true }, item));
+    state.bills = state.bills.map(item => Object.assign({ id: uid("bill"), name: "New bill", amount: 0, active: true, category: "auto" }, item));
+    state.recurring = state.recurring.map(item => Object.assign({ id: uid("rec"), name: "New recurring item", amount: 0, active: true, category: "auto" }, item));
     state.buckets = state.buckets.map(item => Object.assign({ id: uid("bucket"), name: "New bucket", weekly: 0, reserveTarget: 0, reserveBalance: 0 }, item));
     state.goals = state.goals.map(item => {
       const goal = Object.assign({ id: uid("goal"), name: "New goal", type: "one-time", funding: "shared", target: 1000, saved: 0, targetDate: "", postCost: 0, futureInflow: 0, inflowLabel: "Future inflow", inflowDelayWeeks: 12, inflowEnabled: false, pulls: [] }, item);
@@ -824,6 +925,8 @@
     state.scenario.bucketShares = Array.from({ length: state.buckets.length }, (_, index) => clamp((state.scenario.bucketShares || [])[index] || 0, 0, 100));
     state.priorityMode = state.priorityMode !== false;
     state.lenderMode = !!state.lenderMode;
+    state.homeChartMode = state.homeChartMode === "bar" ? "bar" : "donut";
+    state.homeChartGroup = state.homeChartGroup === "item" ? "item" : "category";
     state.version = 1;
     return state;
   }
@@ -1215,6 +1318,72 @@
       '<div class="button-row" style="margin-top:14px"><button class="btn" onclick="resetScenario()">Clear what-if</button></div>';
   }
 
+  function spendingChartItems() {
+    const activeItems = S.bills.concat(S.recurring)
+      .filter(item => item.active !== false && num(item.amount) > 0)
+      .map(item => ({ name: String(item.name || "Untitled expense"), amount: Math.max(0, num(item.amount)), category: expenseCategory(item) }));
+    if (S.homeChartGroup === "item") {
+      return activeItems
+        .map((item, index) => Object.assign({}, item, { color: COLORS[index % COLORS.length] }))
+        .sort((a, b) => b.amount - a.amount);
+    }
+    const grouped = new Map();
+    activeItems.forEach(item => grouped.set(item.category, num(grouped.get(item.category)) + item.amount));
+    return Array.from(grouped, ([name, amount]) => ({ name, amount, color: CATEGORY_COLORS[name] || CATEGORY_COLORS.Other }))
+      .sort((a, b) => b.amount - a.amount);
+  }
+
+  function renderSpendingChart(snapshot) {
+    const categoryButton = $("chartGroupCategory");
+    const itemButton = $("chartGroupItem");
+    const donutButton = $("chartModeDonut");
+    const barButton = $("chartModeBar");
+    [[categoryButton, S.homeChartGroup === "category"], [itemButton, S.homeChartGroup === "item"], [donutButton, S.homeChartMode === "donut"], [barButton, S.homeChartMode === "bar"]].forEach(pair => {
+      if (!pair[0]) return;
+      pair[0].classList.toggle("active", pair[1]);
+      pair[0].setAttribute("aria-pressed", pair[1] ? "true" : "false");
+    });
+
+    const items = spendingChartItems();
+    const total = sum(items.map(item => item.amount));
+    const scenarioChange = snapshot.isScenario ? num(S.scenario.monthlyExpenseChange) : 0;
+    const scenarioNote = Math.abs(scenarioChange) > .005
+      ? '<p class="spending-insight">The What-if total includes ' + (scenarioChange > 0 ? 'an extra ' : 'a reduction of ') + money(Math.abs(scenarioChange)) + '/month. Because that change is not a named bill, this chart continues to show the items entered in Cash Flow.</p>'
+      : '';
+    if (!items.length || total <= 0) {
+      $("spendingChart").innerHTML = '<div class="empty">Add an amount to an active bill or recurring item to build this chart.</div>' + scenarioNote;
+      return;
+    }
+
+    const kind = S.homeChartGroup === "category" ? "category" : "item";
+    const largest = items[0];
+    const largestPercent = largest.amount / total * 100;
+    const insight = '<p class="spending-insight"><strong style="color:var(--text)">' + escapeHTML(largest.name) + '</strong> is the largest ' + kind + ' at ' + money(largest.amount) + '/month (' + largestPercent.toFixed(0) + '% of named spending).</p>';
+
+    if (S.homeChartMode === "bar") {
+      const maxAmount = Math.max(...items.map(item => item.amount), 1);
+      const rows = items.map(item => {
+        const totalPercent = item.amount / total * 100;
+        return '<div class="spending-bar-row"><div class="spending-bar-head"><strong>' + escapeHTML(item.name) + '</strong><span>' + money(item.amount) + ' · ' + totalPercent.toFixed(0) + '%</span></div><div class="spending-bar-track"><div class="spending-bar-fill" style="width:' + (item.amount / maxAmount * 100).toFixed(2) + '%;background:' + item.color + '"></div></div></div>';
+      }).join('');
+      $("spendingChart").innerHTML = '<div class="spending-bars" role="img" aria-label="Monthly spending by ' + kind + '">' + rows + '</div>' + insight + scenarioNote;
+      return;
+    }
+
+    let cursor = 0;
+    const stops = items.map(item => {
+      const start = cursor;
+      cursor += item.amount / total * 100;
+      return item.color + ' ' + start.toFixed(2) + '% ' + cursor.toFixed(2) + '%';
+    }).join(',');
+    const legend = items.map(item => {
+      const percent = item.amount / total * 100;
+      return '<div class="chart-legend-row"><span class="swatch" style="background:' + item.color + '"></span><strong>' + escapeHTML(item.name) + '</strong><span>' + money(item.amount) + '</span><span class="percent">' + percent.toFixed(0) + '%</span></div>';
+    }).join('');
+    const ariaSummary = items.map(item => item.name + ' ' + money(item.amount)).join(', ');
+    $("spendingChart").innerHTML = '<div class="spending-layout"><div class="donut-wrap" role="img" aria-label="Monthly spending by ' + kind + ': ' + escapeHTML(ariaSummary) + '"><div class="donut-chart" style="background:conic-gradient(' + stops + ')"></div><div class="donut-center"><b>' + money(total) + '</b><span>per month</span></div></div><div class="chart-legend">' + legend + '</div></div>' + insight + scenarioNote;
+  }
+
   function renderOverview(snapshot) {
     $("priorityBanner").innerHTML = modeBannerHTML(false);
     const flowClass = snapshot.flow.pool >= 0 ? "good" : "bad";
@@ -1224,6 +1393,8 @@
       metricHTML("Monthly expenses", money(snapshot.flow.expensesMonthly), "active bills + recurring", "") +
       metricHTML("Weekly AP", money(snapshot.flow.pool), "true leftover", flowClass) +
       metricHTML("Unassigned", money(snapshot.remainder), snapshot.remainder < 0 ? "over plan" : "banked pool", assignmentClass);
+
+    renderSpendingChart(snapshot);
 
     const totalForBar = Math.max(snapshot.flow.pool, snapshot.planned, 1);
     let segments = "";
@@ -1356,14 +1527,18 @@
       element.innerHTML = '<div class="empty">No items yet.</div>';
       return;
     }
-    element.innerHTML = items.map((item, index) =>
-      '<div class="line-row">' +
+    element.innerHTML = items.map((item, index) => {
+      const selectedCategory = EXPENSE_CATEGORIES.includes(item.category) ? item.category : "auto";
+      const categoryOptions = '<option value="auto" ' + (selectedCategory === "auto" ? 'selected' : '') + '>Auto · ' + escapeHTML(inferExpenseCategory(item.name)) + '</option>' +
+        EXPENSE_CATEGORIES.map(category => '<option value="' + escapeHTML(category) + '" ' + (selectedCategory === category ? 'selected' : '') + '>' + escapeHTML(category) + '</option>').join('');
+      return '<div class="line-row expense-row">' +
         '<input class="check" type="checkbox" aria-label="Include ' + escapeHTML(item.name) + '" ' + (item.active !== false ? 'checked' : '') + ' onchange="setExpense(\'' + key + '\',' + index + ',\'active\',this.checked)">' +
-        '<input class="input compact name" aria-label="Item name" type="text" value="' + escapeHTML(item.name) + '" onchange="setExpense(\'' + key + '\',' + index + ',\'name\',this.value)">' +
-        '<div class="field-inline"><span class="prefix">$</span><input class="input compact" aria-label="Monthly amount" type="number" min="0" step="0.01" value="' + num(item.amount) + '" onchange="setExpense(\'' + key + '\',' + index + ',\'amount\',this.value)"><span class="suffix">/mo</span></div>' +
+        '<input class="input compact name expense-name" aria-label="Item name" type="text" value="' + escapeHTML(item.name) + '" onchange="setExpense(\'' + key + '\',' + index + ',\'name\',this.value)">' +
+        '<select class="select input compact expense-category" aria-label="Category for ' + escapeHTML(item.name) + '" title="Use the suggested category or choose your own" onchange="setExpense(\'' + key + '\',' + index + ',\'category\',this.value)">' + categoryOptions + '</select>' +
+        '<div class="field-inline expense-amount"><span class="prefix">$</span><input class="input compact" aria-label="Monthly amount" type="number" min="0" step="0.01" value="' + num(item.amount) + '" onchange="setExpense(\'' + key + '\',' + index + ',\'amount\',this.value)"><span class="suffix">/mo</span></div>' +
         '<button class="btn icon danger" aria-label="Remove ' + escapeHTML(item.name) + '" onclick="removeExpense(\'' + key + '\',' + index + ')">×</button>' +
-      '</div>'
-    ).join("") + '<div class="total-line"><span>Active total</span><b>' + money(sum(items.filter(item => item.active !== false).map(item => item.amount))) + '/mo</b></div>';
+      '</div>';
+    }).join("") + '<div class="total-line"><span>Active total</span><b>' + money(sum(items.filter(item => item.active !== false).map(item => item.amount))) + '/mo</b></div>';
   }
 
   function renderLender(snapshot) {
@@ -1872,9 +2047,11 @@
 
   window.setPriorityMode = function (checked) { S.priorityMode = !!checked; render(); };
   window.setLenderMode = function (checked) { S.lenderMode = !!checked; render(); };
+  window.setHomeChartMode = function (mode) { S.homeChartMode = mode === 'bar' ? 'bar' : 'donut'; render(); };
+  window.setHomeChartGroup = function (group) { S.homeChartGroup = group === 'item' ? 'item' : 'category'; render(); };
   window.setIncome = function (key, value) { S.income[key] = num(value); render(); };
   window.setExpense = function (key, index, field, value) { S[key][index][field] = field === 'amount' ? Math.max(0, num(value)) : value; render(); };
-  window.addExpense = function (key) { S[key].push({ id: uid(key === 'bills' ? 'bill' : 'rec'), name: key === 'bills' ? 'New bill' : 'New recurring item', amount: 0, active: true }); render(); };
+  window.addExpense = function (key) { S[key].push({ id: uid(key === 'bills' ? 'bill' : 'rec'), name: key === 'bills' ? 'New bill' : 'New recurring item', amount: 0, active: true, category: 'auto' }); render(); };
   window.removeExpense = function (key, index) { S[key].splice(index, 1); render(); };
   window.setDebt = function (index, field, value) { S.debts[index][field] = ['balance','payment'].includes(field) ? Math.max(0, num(value)) : value; render(); };
   window.addDebt = function () { S.debts.push({ id: uid('debt'), name: 'New debt', balance: 0, payment: 0, active: true }); render(); };
