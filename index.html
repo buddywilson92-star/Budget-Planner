@@ -29,10 +29,12 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { max-width: 100%; overflow-x: hidden; scroll-behavior: smooth; }
     body {
       margin: 0;
       min-width: 320px;
+      max-width: 100%;
+      overflow-x: hidden;
       background:
         radial-gradient(circle at 12% -10%, rgba(81, 214, 179, .11), transparent 30rem),
         radial-gradient(circle at 95% 0%, rgba(245, 166, 107, .09), transparent 32rem),
@@ -50,7 +52,7 @@
     input[type="number"] { font-variant-numeric: tabular-nums; }
     input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { opacity: .65; }
 
-    .app-shell { min-height: 100vh; }
+    .app-shell { min-height: 100vh; max-width: 100%; overflow-x: hidden; }
     .topbar {
       position: sticky;
       top: 0;
@@ -79,7 +81,7 @@
     }
     .brand-name { font-weight: 750; letter-spacing: -.02em; }
     .brand-sub { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-    .nav-tabs { display: flex; align-items: center; gap: 4px; flex: 1; }
+    .nav-tabs { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
     .nav-tab {
       border: 0;
       border-radius: 10px;
@@ -88,7 +90,9 @@
       color: var(--muted);
       font-size: 13px;
       font-weight: 650;
+      white-space: nowrap;
     }
+    .nav-label-short { display: none; }
     .nav-tab:hover { color: var(--text); background: rgba(255,255,255,.035); }
     .nav-tab.active { color: var(--text); background: var(--panel-2); }
     .save-state {
@@ -101,8 +105,8 @@
     }
     .save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px rgba(81,214,179,.55); }
 
-    main { width: min(1440px, 100%); margin: 0 auto; padding: 32px clamp(16px, 3vw, 42px) 80px; }
-    .view { display: none; animation: lift .22s ease; }
+    main { width: min(1440px, 100%); max-width: 100%; min-width: 0; margin: 0 auto; padding: 32px clamp(16px, 3vw, 42px) 80px; }
+    .view { display: none; width: 100%; min-width: 0; animation: lift .22s ease; }
     .view.active { display: block; }
     @keyframes lift { from { opacity: .4; transform: translateY(4px); } }
 
@@ -233,6 +237,8 @@
 
     .input, .select {
       width: 100%;
+      min-width: 0;
+      max-width: 100%;
       min-height: 38px;
       border: 1px solid var(--line-strong);
       border-radius: 9px;
@@ -241,6 +247,7 @@
       color: var(--text);
       font-size: 13px;
     }
+    .field, .card, .stage-panel, .timeline-layout > * { min-width: 0; }
     .input:hover, .select:hover { border-color: #476a80; }
     .input.compact { min-height: 34px; padding: 6px 8px; font-size: 12px; }
     .input.name { background: transparent; }
@@ -283,15 +290,23 @@
     .goal-cube-rotator { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; transition: transform .62s cubic-bezier(.2,.72,.18,1); }
     .goal-cube-scene.is-dragging { cursor: grabbing; }
     .goal-cube-scene.is-dragging .goal-cube-rotator { transition: none; }
+    .goal-cube-scene.is-preparing .goal-cube-rotator { transition: none !important; }
+    .goal-cube-scene.form-face { cursor: default; }
+    .goal-cube-scene.form-face .face-heading { cursor: grab; touch-action: pan-y; }
+    .goal-cube-scene.form-face.is-dragging { cursor: grabbing; }
+    .goal-cube-scene.is-settled .goal-cube-rotator { height: auto; transform: none !important; transform-style: flat; transition: none; will-change: auto; }
+    .goal-cube-scene.is-settled .goal-face[data-goal-face] { display: none; position: relative; inset: auto; height: auto; overflow: visible; transform: none !important; transform-style: flat; backface-visibility: visible; }
+    .goal-cube-scene.is-settled .goal-face.is-active { display: block; }
     .goal-face { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 18px; overflow: hidden; pointer-events: none; backface-visibility: hidden; transform-style: preserve-3d; background: linear-gradient(145deg, rgba(18,36,52,.99), rgba(10,25,38,.99)); box-shadow: inset 0 0 0 1px rgba(51,80,100,.54), inset 22px 0 38px -35px rgba(255,255,255,.26), inset -24px 0 40px -36px rgba(0,0,0,.9); }
     .goal-face[data-goal-face="0"] { transform: rotateY(0deg) translateZ(var(--cube-depth)); }
     .goal-face[data-goal-face="1"] { transform: rotateY(90deg) translateZ(var(--cube-depth)); }
     .goal-face[data-goal-face="2"] { transform: rotateY(180deg) translateZ(var(--cube-depth)); }
     .goal-face[data-goal-face="3"] { transform: rotateY(-90deg) translateZ(var(--cube-depth)); }
-    .goal-face.is-active { pointer-events: auto; }
+    .goal-face.is-active { z-index: 4; pointer-events: auto; }
+    .goal-face.is-active :is(button,input,select,textarea,label) { position: relative; z-index: 6; pointer-events: auto; touch-action: manipulation; }
     .face-heading { display: flex; justify-content: space-between; align-items: start; gap: 14px; margin-bottom: 15px; }
     .face-heading p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
-    .goal-cube-nav { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); background: rgba(7,17,28,.36); }
+    .goal-cube-nav { display: block; padding: 10px 14px; border-top: 1px solid var(--line); background: rgba(7,17,28,.36); }
     .cube-steps { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; }
     .cube-step { min-height: 32px; border: 1px solid transparent; border-radius: 8px; padding: 5px 7px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; }
     .cube-step:hover { color: var(--text); background: rgba(255,255,255,.035); }
@@ -331,8 +346,9 @@
     .queue-number { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.045); color: var(--muted); font-size: 10px; font-weight: 800; }
     .queue-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 680; }
     .queue-eta { color: var(--muted); font-size: 10px; text-align: right; }
-    .stage-toolbar { display: grid; grid-template-columns: auto minmax(200px,1fr) auto; gap: 10px; align-items: end; margin-bottom: 15px; }
-    .stage-toolbar .field { margin: 0; }
+    .stage-toolbar { display: grid; grid-template-columns: auto minmax(200px,1fr) auto; gap: 10px; min-width: 0; align-items: end; margin-bottom: 15px; }
+    .stage-toolbar .field { min-width: 0; margin: 0; }
+    #futureStageSelect { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .stage-summary { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 1px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--line); }
     .stage-summary > div { padding: 12px; background: rgba(7,17,28,.56); }
     .stage-summary label { display: block; color: var(--muted); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
@@ -367,7 +383,8 @@
     }
     @media (max-width: 780px) {
       .topbar { position: static; flex-wrap: wrap; gap: 10px 14px; }
-      .nav-tabs { order: 3; width: 100%; overflow-x: auto; }
+      .nav-tabs { order: 3; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); width: 100%; max-width: 100%; gap: 3px; overflow: hidden; }
+      .nav-tab { min-width: 0; overflow: hidden; padding: 8px 5px; font-size: 11px; text-overflow: ellipsis; }
       .save-state { margin-left: auto; }
       main { padding-top: 24px; }
       .page-heading { align-items: start; flex-direction: column; }
@@ -398,9 +415,7 @@
       .goal-stats { grid-template-columns: 1fr 1fr; gap: 12px; }
       .goal-stats > :first-child { grid-column: 1 / -1; }
       .goal-face { padding: 14px; }
-      .goal-cube-nav { grid-template-columns: 1fr 1fr; padding: 9px 10px; }
-      .cube-steps { grid-column: 1 / -1; }
-      .goal-cube-nav > .btn { width: 100%; }
+      .goal-cube-nav { padding: 9px 10px; }
       .stage-toolbar { grid-template-columns: 1fr 1fr; }
       .stage-toolbar .field { grid-column: 1 / -1; grid-row: 1; }
       .form-grid, .form-grid.three { grid-template-columns: 1fr; }
@@ -409,6 +424,11 @@
       .line-row { grid-template-columns: 24px minmax(90px,1fr) 94px 34px; gap: 6px; }
       .timeline-event { grid-template-columns: 28px minmax(0,1fr); }
       .event-date { grid-column: 2; text-align: left; }
+    }
+    @media (max-width: 560px) {
+      .nav-label-full { display: none; }
+      .nav-label-short { display: inline; }
+      .nav-tab { padding-inline: 3px; font-size: 10px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -438,11 +458,11 @@
       </div>
     </div>
     <nav class="nav-tabs" aria-label="Planner sections">
-      <button class="nav-tab active" data-view="overview" onclick="showView('overview')">Overview</button>
-      <button class="nav-tab" data-view="cashflow" onclick="showView('cashflow')">Cash flow</button>
-      <button class="nav-tab" data-view="goals" onclick="showView('goals')">Goals</button>
-      <button class="nav-tab" data-view="timeline" onclick="showView('timeline')">Futuregram</button>
-      <button class="nav-tab" data-view="tools" onclick="showView('tools')">Save &amp; export</button>
+      <button class="nav-tab active" data-view="overview" onclick="showView('overview')" aria-label="Overview"><span class="nav-label-full">Overview</span><span class="nav-label-short" aria-hidden="true">Home</span></button>
+      <button class="nav-tab" data-view="cashflow" onclick="showView('cashflow')" aria-label="Cash flow"><span class="nav-label-full">Cash flow</span><span class="nav-label-short" aria-hidden="true">Cash</span></button>
+      <button class="nav-tab" data-view="goals" onclick="showView('goals')" aria-label="Goals"><span class="nav-label-full">Goals</span><span class="nav-label-short" aria-hidden="true">Goals</span></button>
+      <button class="nav-tab" data-view="timeline" onclick="showView('timeline')" aria-label="Futuregram"><span class="nav-label-full">Futuregram</span><span class="nav-label-short" aria-hidden="true">Future</span></button>
+      <button class="nav-tab" data-view="tools" onclick="showView('tools')" aria-label="Save and export"><span class="nav-label-full">Save &amp; export</span><span class="nav-label-short" aria-hidden="true">Save</span></button>
     </nav>
     <div class="save-state" aria-live="polite"><span class="save-dot"></span><span id="saveLabel">Saved locally</span></div>
   </header>
@@ -1283,7 +1303,7 @@
           '<div class="goal-stat"><label>Projected</label><b>' + projected + '</b></div>' +
         '</div>' + deadlineGuidance +
         '<div class="guidance"><strong>Snowball after this goal</strong>' + escapeHTML(snowballPreview) + (afterStage ? '<div class="button-row" style="margin-top:9px"><button class="btn" onclick="inspectGoalFuture(' + index + ')">Inspect buckets and goals</button></div>' : '') + '</div>' +
-        '<div class="face-actions"><div class="button-row">' + activeAction + '<button class="btn" onclick="setGoalFaceByIndex(' + index + ',1)">Edit goal</button></div><span class="tiny">Swipe left/right, drag with a mouse, or use the controls below.</span></div>' +
+        '<div class="face-actions"><div class="button-row">' + activeAction + '<button class="btn" onclick="setGoalFaceByIndex(' + index + ',1)">Edit goal</button></div><span class="tiny">Swipe anywhere outside a form control, or select a face title below.</span></div>' +
       '</section>';
 
     const goalFace =
@@ -1333,8 +1353,8 @@
         '<div class="goal-name"><div class="goal-name-row"><h3>' + escapeHTML(goal.name) + '</h3><span class="status-chip ' + statusClass + '">' + statusText + '</span></div><div class="goal-sub">' + (goal.funding === 'priority' ? 'Priority queue' : 'Shared background') + (goal.targetDate ? ' · deadline ' + escapeHTML(goal.targetDate) : ' · no deadline') + '</div></div>' +
         '<div class="goal-actions"><button class="btn icon" ' + (index === 0 ? 'disabled' : '') + ' onclick="moveGoal(' + index + ',-1)" aria-label="Move ' + escapeHTML(goal.name) + ' up">↑</button><button class="btn icon" ' + (index === S.goals.length - 1 ? 'disabled' : '') + ' onclick="moveGoal(' + index + ',1)" aria-label="Move ' + escapeHTML(goal.name) + ' down">↓</button></div>' +
       '</div></div>' +
-      '<div class="goal-cube-scene" data-cube-scene><div class="goal-cube-rotator" data-cube-rotator data-rotation="' + (-currentFace * 90) + '" style="transform:translateZ(var(--cube-depth-neg)) rotateY(' + (-currentFace * 90) + 'deg)">' + summaryFace + goalFace + fundingFace + afterFace + '</div></div>' +
-      '<nav class="goal-cube-nav" aria-label="Pages for ' + escapeHTML(goal.name) + '"><button class="btn" data-cube-back ' + (currentFace === 0 ? 'disabled' : '') + ' onclick="stepGoalFaceByIndex(' + index + ',-1)">← Back</button><div class="cube-steps">' + stepButtons + '</div><button class="btn" data-cube-next ' + (currentFace === 3 ? 'disabled' : '') + ' onclick="stepGoalFaceByIndex(' + index + ',1)">Next →</button></nav>' +
+      '<div class="goal-cube-scene is-settled ' + (currentFace > 0 ? 'form-face' : '') + '" data-cube-scene><div class="goal-cube-rotator" data-cube-rotator data-rotation="' + (-currentFace * 90) + '" style="transform:translateZ(var(--cube-depth-neg)) rotateY(' + (-currentFace * 90) + 'deg)">' + summaryFace + goalFace + fundingFace + afterFace + '</div></div>' +
+      '<nav class="goal-cube-nav" aria-label="Pages for ' + escapeHTML(goal.name) + '"><div class="cube-steps">' + stepButtons + '</div></nav>' +
       '</article>';
   }
 
@@ -1454,8 +1474,54 @@
     scene.style.setProperty('--cube-depth-neg', (-depth) + 'px');
     const targetHeight = Math.max(250, Math.ceil(targetFace.scrollHeight));
     scene.style.height = targetHeight + 'px';
-    rotator.style.height = '100%';
-    faces.forEach(face => { face.style.height = '100%'; });
+    if (scene.classList.contains('is-settled')) {
+      rotator.style.height = 'auto';
+      faces.forEach(face => { face.style.height = 'auto'; });
+    } else {
+      rotator.style.height = '100%';
+      faces.forEach(face => { face.style.height = '100%'; });
+    }
+  }
+
+  function prepareGoalCubeTurn(card, faceIndex) {
+    const scene = card && card.querySelector('[data-cube-scene]');
+    const rotator = card && card.querySelector('[data-cube-rotator]');
+    if (!scene || !rotator) return;
+    clearTimeout(scene._cubeSettleTimer);
+    if (scene._cubeSettleHandler) rotator.removeEventListener('transitionend', scene._cubeSettleHandler);
+    scene._cubeSettleHandler = null;
+    scene.classList.add('is-preparing');
+    scene.classList.remove('is-settled');
+    sizeGoalCube(card, faceIndex);
+    void rotator.offsetWidth;
+    scene.classList.remove('is-preparing');
+    void rotator.offsetWidth;
+  }
+
+  function scheduleGoalCubeSettle(card, faceIndex) {
+    const scene = card && card.querySelector('[data-cube-scene]');
+    const rotator = card && card.querySelector('[data-cube-rotator]');
+    if (!scene || !rotator) return;
+    clearTimeout(scene._cubeSettleTimer);
+    if (scene._cubeSettleHandler) rotator.removeEventListener('transitionend', scene._cubeSettleHandler);
+    let finished = false;
+    const settle = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(scene._cubeSettleTimer);
+      if (scene._cubeSettleHandler) rotator.removeEventListener('transitionend', scene._cubeSettleHandler);
+      scene._cubeSettleHandler = null;
+      const activeFace = card.querySelector('.goal-face.is-active');
+      if (!activeFace || num(activeFace.getAttribute('data-goal-face')) !== faceIndex) return;
+      scene.classList.remove('is-dragging');
+      scene.classList.add('is-settled');
+      sizeGoalCube(card, faceIndex);
+    };
+    scene._cubeSettleHandler = event => {
+      if (event.target === rotator && event.propertyName === 'transform') settle();
+    };
+    rotator.addEventListener('transitionend', scene._cubeSettleHandler);
+    scene._cubeSettleTimer = setTimeout(settle, 760);
   }
 
   function syncGoalCubes() {
@@ -1477,12 +1543,18 @@
 
       scene.addEventListener('pointerdown', event => {
         if (event.button != null && event.button !== 0) return;
-        if (event.target.closest('button,input,select,textarea,label,a')) return;
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+        const interactive = path.some(node => node && node.matches && node.matches('button,input,select,option,textarea,label,a,[contenteditable="true"]'));
+        if (interactive) return;
+        const activeFace = card.querySelector('.goal-face.is-active');
+        const activeFaceIndex = activeFace ? num(activeFace.getAttribute('data-goal-face')) : 0;
+        prepareGoalCubeTurn(card, activeFaceIndex);
         drag = {
           pointerId: event.pointerId,
           startX: event.clientX,
           startY: event.clientY,
           horizontal: false,
+          faceIndex: activeFaceIndex,
           startRotation: num(rotator.dataset.rotation)
         };
         try { scene.setPointerCapture(event.pointerId); } catch (error) {}
@@ -1510,11 +1582,17 @@
         scene.classList.remove('is-dragging');
         try { scene.releasePointerCapture(event.pointerId); } catch (error) {}
         const dx = event.clientX - current.startX;
-        const threshold = Math.max(42, scene.clientWidth * .12);
+        const threshold = Math.max(28, scene.clientWidth * .08);
         if (!cancelled && current.horizontal && Math.abs(dx) >= threshold) {
           window.stepGoalFaceByIndex(num(card.dataset.goalIndex), dx < 0 ? 1 : -1);
         } else {
           rotator.style.transform = 'translateZ(var(--cube-depth-neg)) rotateY(' + current.startRotation + 'deg)';
+          if (!current.horizontal) {
+            scene.classList.add('is-settled');
+            sizeGoalCube(card, current.faceIndex);
+          } else {
+            scheduleGoalCubeSettle(card, current.faceIndex);
+          }
         }
       }
 
@@ -1638,10 +1716,22 @@
   };
   window.setGoalFace = function (id, face) {
     const nextFace = clamp(Math.round(num(face)), 0, 3);
-    GOAL_FACES.set(id, nextFace);
     const card = Array.from(document.querySelectorAll('[data-goal-card]')).find(item => item.getAttribute('data-goal-card') === id);
+    GOAL_FACES.set(id, nextFace);
     if (!card) { render(); return; }
     const rotator = card.querySelector('[data-cube-rotator]');
+    const previousPanel = card.querySelector('.goal-face.is-active');
+    const previousFace = previousPanel ? num(previousPanel.getAttribute('data-goal-face')) : 0;
+    const scene = card.querySelector('[data-cube-scene]');
+    if (nextFace === previousFace) {
+      if (scene) {
+        scene.classList.toggle('form-face', nextFace > 0);
+        scene.classList.add('is-settled');
+      }
+      sizeGoalCube(card, nextFace);
+      return;
+    }
+    prepareGoalCubeTurn(card, previousFace);
     const currentRotation = num(rotator.dataset.rotation);
     let targetRotation = -nextFace * 90;
     while (targetRotation - currentRotation > 180) targetRotation -= 360;
@@ -1658,10 +1748,12 @@
       if (isCurrent) step.setAttribute('aria-current', 'step');
       else step.removeAttribute('aria-current');
     });
-    card.querySelector('[data-cube-back]').disabled = nextFace === 0;
-    card.querySelector('[data-cube-next]').disabled = nextFace === 3;
+    if (scene) scene.classList.toggle('form-face', nextFace > 0);
     sizeGoalCube(card, nextFace);
-    const applyRotation = () => { rotator.style.transform = 'translateZ(var(--cube-depth-neg)) rotateY(' + targetRotation + 'deg)'; };
+    const applyRotation = () => {
+      rotator.style.transform = 'translateZ(var(--cube-depth-neg)) rotateY(' + targetRotation + 'deg)';
+      scheduleGoalCubeSettle(card, nextFace);
+    };
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(applyRotation);
     else applyRotation();
   };
