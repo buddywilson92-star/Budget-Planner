@@ -366,10 +366,10 @@
     .delta-up { color: var(--teal); }
     .delta-down { color: var(--red); }
 
-    .tools-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-    .tool-card { padding: 18px; }
+    .tools-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; max-width: 100%; min-width: 0; gap: 14px; }
+    .tool-card { width: 100%; max-width: 100%; min-width: 0; padding: 18px; }
     .tool-card p { min-height: 48px; color: var(--muted); font-size: 11px; }
-    .file-input { position: absolute; opacity: 0; pointer-events: none; }
+    .file-input { position: fixed; top: 0; left: 0; width: 1px; max-width: 1px; height: 1px; max-height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); clip-path: inset(50%); border: 0; white-space: nowrap; opacity: 0; }
     .notice { display: none; position: fixed; right: 22px; bottom: 22px; z-index: 50; max-width: min(360px, calc(100vw - 44px)); padding: 12px 15px; border: 1px solid rgba(81,214,179,.35); border-radius: 12px; background: #102638; color: var(--text); box-shadow: var(--shadow); font-size: 12px; }
     .notice.show { display: block; animation: toast .2s ease; }
     @keyframes toast { from { opacity: 0; transform: translateY(8px); } }
@@ -399,6 +399,8 @@
       .form-grid.three { grid-template-columns: 1fr 1fr; }
       .tools-grid { grid-template-columns: 1fr; }
       .tool-card p { min-height: 0; }
+      #view-tools, #view-tools .page-heading, .tools-grid, .tool-card { width: 100%; max-width: 100%; min-width: 0; }
+      .tool-card .btn { max-width: 100%; white-space: normal; text-align: center; overflow-wrap: anywhere; }
     }
     @media (max-width: 560px) {
       .topbar { padding-inline: 14px; }
