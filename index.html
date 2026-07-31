@@ -29,7 +29,7 @@
     }
 
     * { box-sizing: border-box; }
-    html { max-width: 100%; overflow-x: hidden; scroll-behavior: smooth; }
+    html { max-width: 100%; overflow-x: hidden; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     body {
       margin: 0;
       min-width: 320px;
@@ -382,6 +382,7 @@
       .goal-stats { grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(80px, .6fr)); }
     }
     @media (max-width: 780px) {
+      input:not([type="checkbox"]), select, textarea, .input, .input.compact, .select { font-size: 16px; touch-action: manipulation; }
       .topbar { position: static; flex-wrap: wrap; gap: 10px 14px; }
       .nav-tabs { order: 3; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); width: 100%; max-width: 100%; gap: 3px; overflow: hidden; }
       .nav-tab { min-width: 0; overflow: hidden; padding: 8px 5px; font-size: 11px; text-overflow: ellipsis; }
@@ -433,17 +434,71 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
+    @page { size: auto; margin: 12mm; }
     @media print {
-      :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #f5f7f8; --panel-3: #edf1f3; --text: #17212a; --muted: #54636b; --faint: #6d7a80; --line: #dbe2e6; --line-strong: #c3cfd5; }
-      body { background: #fff; }
-      .topbar, .button-row, .btn, .switch, .goal-cube-nav { display: none !important; }
-      main { width: 100%; padding: 0; }
-      .view { display: block !important; page-break-after: always; }
-      .card { box-shadow: none; background: #fff; break-inside: avoid; }
-      .goal-cube-scene { height: auto !important; min-height: 0; overflow: visible; }
-      .goal-cube-rotator { height: auto !important; transform: none !important; }
-      .goal-face[data-goal-face] { display: none; position: static; height: auto !important; overflow: visible; opacity: 1; visibility: visible; transform: none !important; }
-      .goal-face.is-active { display: block; }
+      :root {
+        color-scheme: light;
+        --bg: #fff;
+        --panel: #fff;
+        --panel-2: #f3f7f9;
+        --panel-3: #e9f0f3;
+        --text: #172833;
+        --muted: #526873;
+        --faint: #687c85;
+        --line: #cfdce2;
+        --line-strong: #aebfc8;
+        --accent: #c96f30;
+        --accent-2: #a95520;
+        --teal: #147d67;
+        --blue: #286eae;
+        --yellow: #946600;
+        --red: #b63c49;
+        --purple: #6d52a3;
+      }
+      html, body { width: 100%; max-width: none; overflow: visible; background: #fff !important; color: var(--text); }
+      body { min-width: 0; font-size: 10.5pt; }
+      *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; text-shadow: none !important; }
+      .app-shell { min-height: 0; overflow: visible; }
+      .topbar, .button-row, .btn, .switch, .goal-cube-nav, .notice, #view-tools { display: none !important; }
+      main { width: 100%; max-width: none; padding: 0; }
+      .view { display: block !important; width: 100%; animation: none !important; break-after: page; page-break-after: always; }
+      #view-timeline { break-after: auto; page-break-after: auto; }
+      .page-heading { margin-bottom: 17px; padding-bottom: 12px; border-bottom: 2px solid var(--accent); }
+      h1 { color: #14242e; font-size: 25px; }
+      h2, h3 { color: #20333e; }
+      .lede, .muted, .tiny, .card-head p, .field-help, .field-explainer, .event-copy, .goal-sub { color: var(--muted) !important; }
+      .card { border: 1px solid var(--line-strong); border-radius: 10px; background: #fff !important; box-shadow: none !important; break-inside: avoid-page; }
+      .card-pad, .pool-figure { padding: 15px; }
+      .metric-grid, .stage-summary { border-color: var(--line-strong); background: var(--line) !important; }
+      .metric, .stage-summary > div { background: #f3f7f9 !important; }
+      .stage-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .metric-value, .pool-number b { color: #172833; }
+      .priority-banner { border-color: #d99b6d; background: #fff5eb !important; }
+      .priority-banner.off { border-color: #8bb4d5; background: #eff7fc !important; }
+      .mode-icon { color: #9c4d18; background: #ffe5d1 !important; }
+      .priority-banner.off .mode-icon { color: #245f94; background: #dceefa !important; }
+      .allocation-track, .mini-track, .goal-progress { border-color: var(--line); background: #e7eef1 !important; box-shadow: inset 0 0 0 1px var(--line); }
+      .bucket-row, .line-row, .queue-row, .stage-table th, .stage-table td { border-color: var(--line); }
+      .input, .select { border-color: var(--line-strong); background: #fff !important; color: var(--text) !important; }
+      #futureStageSelect { min-height: 0; border: 0; padding: 0; appearance: none; background: transparent !important; font-weight: 700; }
+      .goal-card-head { background: #f2f6f8 !important; }
+      .goal-cube-scene { height: auto !important; min-height: 0; overflow: visible; background: #fff !important; perspective: none; }
+      .goal-cube-rotator { height: auto !important; transform: none !important; transform-style: flat; }
+      .goal-face[data-goal-face] { display: none !important; position: static; height: auto !important; overflow: visible; opacity: 1; visibility: visible; border: 0; background: #fff !important; color: var(--text) !important; box-shadow: none !important; transform: none !important; }
+      .goal-face[data-goal-face="0"] { display: block !important; }
+      .status-active { color: #15463b !important; background: #cceee5 !important; border: 1px solid #6bb8a5; }
+      .status-queued { color: #704d00 !important; background: #fff1c7 !important; border-color: #d8b95a; }
+      .status-shared { color: #245c8d !important; background: #deeffc !important; border-color: #83b4d8; }
+      .status-complete { color: #42545e !important; background: #edf1f3 !important; border-color: #b8c5cb; }
+      .guidance, .choice-panel, .editor-note { border-color: #a9c7da; background: #f3f9fc !important; }
+      .guidance.warning { border-color: #d9bd67; background: #fff9e8 !important; }
+      .guidance.good-state { border-color: #79bca9; background: #eef9f5 !important; }
+      .stage-insight { border-color: var(--accent); background: #fff5eb !important; }
+      .timeline::before { background: var(--line-strong); }
+      .event-dot { border-color: #fff; color: #10232d; }
+      .stage-table-wrap { overflow: visible; }
+      .stage-table { font-size: 8.5pt; }
+      .empty { border-color: var(--line-strong); color: var(--muted); background: #fafcfd; }
     }
   </style>
 </head>
@@ -471,9 +526,9 @@
     <section id="view-overview" class="view active" aria-labelledby="overviewTitle">
       <div class="page-heading">
         <div>
-          <p class="eyebrow">Your plan right now</p>
+          <p class="eyebrow">Blank starter template</p>
           <h1 id="overviewTitle">Give every extra dollar a job.</h1>
-          <p class="lede">Build your weekly Attribute Pool, split it into buckets, and let the goal queue handle what happens next.</p>
+          <p class="lede">This shared copy starts without personal finances or plans. Enter cash flow, adjust the starter buckets, and then build a goal queue.</p>
         </div>
         <div class="button-row">
           <button class="btn" onclick="showView('cashflow')">Edit cash flow</button>
@@ -650,40 +705,26 @@
   "version": 1,
   "priorityMode": true,
   "lenderMode": false,
-  "income": { "hourlyRate": 35, "hoursPerWeek": 40, "sideMonthly": 0, "deductionPercent": 23.9 },
+  "income": { "hourlyRate": 0, "hoursPerWeek": 0, "sideMonthly": 0, "deductionPercent": 0 },
   "bills": [
-    { "id": "bill-housing", "name": "Rent / Mortgage", "amount": 1600, "active": true },
-    { "id": "bill-electric", "name": "Electric", "amount": 0, "active": true },
-    { "id": "bill-heat", "name": "Heat", "amount": 0, "active": true },
-    { "id": "bill-internet", "name": "Internet", "amount": 98, "active": true },
-    { "id": "bill-food", "name": "Food", "amount": 50, "active": true },
-    { "id": "bill-health", "name": "Home Health", "amount": 100, "active": true }
+    { "id": "bill-housing-template", "name": "Housing", "amount": 0, "active": true },
+    { "id": "bill-utilities-template", "name": "Utilities", "amount": 0, "active": true },
+    { "id": "bill-food-template", "name": "Food", "amount": 0, "active": true },
+    { "id": "bill-transport-template", "name": "Transportation", "amount": 0, "active": true },
+    { "id": "bill-insurance-template", "name": "Insurance", "amount": 0, "active": true }
   ],
   "recurring": [
-    { "id": "rec-google", "name": "Google", "amount": 28.5, "active": true },
-    { "id": "rec-spotify", "name": "Spotify", "amount": 18.99, "active": true },
-    { "id": "rec-prime", "name": "Amazon Prime", "amount": 7.99, "active": true },
-    { "id": "rec-gym", "name": "Gym", "amount": 25, "active": true },
-    { "id": "rec-ezpass", "name": "E-Z Pass", "amount": 15, "active": true },
-    { "id": "rec-paypal", "name": "PayPal", "amount": 50, "active": true },
-    { "id": "rec-wash", "name": "Car Wash", "amount": 40, "active": true }
+    { "id": "rec-subscriptions-template", "name": "Subscriptions", "amount": 0, "active": true },
+    { "id": "rec-memberships-template", "name": "Memberships", "amount": 0, "active": true }
   ],
   "buckets": [
-    { "id": "bucket-vehicle", "name": "Vehicle", "weekly": 170, "reserveTarget": 0, "reserveBalance": 359 },
-    { "id": "bucket-fun", "name": "Personal / Fun", "weekly": 170, "reserveTarget": 0, "reserveBalance": 170 },
-    { "id": "bucket-tax", "name": "Taxes", "weekly": 20, "reserveTarget": 0, "reserveBalance": 270 },
-    { "id": "bucket-media", "name": "Media", "weekly": 40, "reserveTarget": 0, "reserveBalance": 200 },
-    { "id": "bucket-savings", "name": "Savings", "weekly": 195, "reserveTarget": 0, "reserveBalance": 261 }
+    { "id": "bucket-priority-template", "name": "Priority goal", "weekly": 0, "reserveTarget": 0, "reserveBalance": 0 },
+    { "id": "bucket-flexible-template", "name": "Flexible spending", "weekly": 0, "reserveTarget": 0, "reserveBalance": 0 },
+    { "id": "bucket-taxes-template", "name": "Taxes", "weekly": 0, "reserveTarget": 0, "reserveBalance": 0 },
+    { "id": "bucket-savings-template", "name": "Long-term savings", "weekly": 0, "reserveTarget": 0, "reserveBalance": 0 }
   ],
-  "goals": [
-    { "id": "goal-vehicle", "name": "Vehicle Down Payment", "type": "one-time", "funding": "priority", "target": 12000, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [100,0,0,0,0] },
-    { "id": "goal-home", "name": "Home / Moving", "type": "ongoing", "funding": "priority", "target": 60000, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [0,0,0,0,100] },
-    { "id": "goal-office", "name": "Computer / Office", "type": "one-time", "funding": "shared", "target": 12000, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [0,0,0,100,0] },
-    { "id": "goal-cruise", "name": "Cruise", "type": "one-time", "funding": "shared", "target": 1250, "saved": 0, "targetDate": "", "postCost": 0, "futureInflow": 0, "inflowDelayWeeks": 12, "inflowEnabled": false, "pulls": [0,100,0,0,0] }
-  ],
-  "debts": [
-    { "id": "debt-example", "name": "Example debt", "balance": 0, "payment": 0, "active": true }
-  ]
+  "goals": [],
+  "debts": []
 }
 </script>
 
@@ -691,7 +732,7 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "waypoint-budget-planner-v1";
+  const STORAGE_KEY = "waypoint-budget-planner-public-template-v1";
   const COLORS = ["#51d6b3", "#69a9ff", "#f5a66b", "#a98df7", "#f2cc60", "#ff7a82", "#54c7ec", "#b5d56a"];
   const GOAL_FACES = new Map();
   let activeView = "overview";
