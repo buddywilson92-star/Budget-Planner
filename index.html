@@ -96,7 +96,7 @@
     .plan-lens { position: relative; display: flex; align-items: center; gap: 9px; min-width: max-content; }
     .lens-label { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     .lens-options { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.025); }
-    .lens-choice { position: relative; min-height: 30px; border: 0; border-radius: 7px; padding: 5px 9px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .lens-choice { position: relative; min-height: 30px; border: 0; border-radius: 7px; padding: 5px 9px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; touch-action: manipulation; }
     .lens-choice.active.current { color: var(--text); background: var(--panel-2); }
     .lens-choice.active.what-if { color: #16211e; background: var(--teal); }
     .lens-name { max-width: 120px; overflow: hidden; color: var(--teal); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
@@ -127,10 +127,7 @@
     .plan-lens:hover .lens-more-hint,
     .plan-lens:focus-within .lens-more-hint,
     .plan-lens.show-more-hint .lens-more-hint { opacity: 1; transform: translate(-50%, 0) scale(1); animation: lensHintPop .38s cubic-bezier(.2,.8,.2,1); }
-    .lens-choice.what-if.is-holding { overflow: hidden; }
-    .lens-choice.what-if.is-holding::after { content: ""; position: absolute; inset: 2px; border: 2px solid transparent; border-top-color: var(--teal); border-right-color: var(--teal); border-radius: 7px; animation: whatIfHoldProgress .68s linear forwards; }
     @keyframes lensHintPop { 0% { opacity: 0; transform: translate(-50%,-8px) scale(.92); } 70% { transform: translate(-50%,2px) scale(1.02); } 100% { opacity: 1; transform: translate(-50%,0) scale(1); } }
-    @keyframes whatIfHoldProgress { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
     body.scenario-on .save-dot { background: var(--teal); box-shadow: 0 0 12px rgba(81,214,179,.75); }
     .nav-tabs { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
     .nav-tab {
@@ -534,7 +531,7 @@
       .topbar.is-compact .nav-tab { padding-top: 5px; padding-bottom: 5px; }
       .topbar.is-compact .save-state { display: none; }
       .lens-more-hint { top: calc(100% + 46px); }
-      .nav-tabs { order: 3; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); flex: 0 0 100%; width: 100%; max-width: 100%; gap: 3px; overflow: hidden; }
+      .nav-tabs { order: 3; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); flex: 0 0 100%; width: 100%; max-width: 100%; gap: 3px; overflow: hidden; }
       .nav-tab { min-width: 0; overflow: hidden; padding: 8px 5px; font-size: 11px; text-overflow: ellipsis; }
       .save-state { margin-left: auto; }
       main { padding-top: 24px; }
@@ -705,7 +702,6 @@
       <button class="nav-tab active" data-view="overview" onclick="showView('overview')" aria-label="Overview"><span class="nav-label-full">Overview</span><span class="nav-label-short" aria-hidden="true">Home</span></button>
       <button class="nav-tab" data-view="cashflow" onclick="showView('cashflow')" aria-label="Cash flow"><span class="nav-label-full">Cash flow</span><span class="nav-label-short" aria-hidden="true">Cash</span></button>
       <button class="nav-tab" data-view="goals" onclick="showView('goals')" aria-label="Goals"><span class="nav-label-full">Goals</span><span class="nav-label-short" aria-hidden="true">Goals</span></button>
-      <button class="nav-tab" id="futureCaddyButton" data-view="timeline" onclick="toggleFutureCaddy()" aria-label="Open live Futuregram comparison" aria-expanded="false"><span class="nav-label-full">Futuregram</span><span class="nav-label-short" aria-hidden="true">Future</span></button>
       <button class="nav-tab" data-view="tools" onclick="showView('tools')" aria-label="Save and export"><span class="nav-label-full">Save &amp; export</span><span class="nav-label-short" aria-hidden="true">Save</span></button>
     </nav>
     <div class="save-state" aria-live="polite"><span class="save-dot"></span><span id="saveLabel">Saved locally</span></div>
@@ -984,10 +980,9 @@
   let futureCaddyOpen = false;
   let topbarSyncFrame = 0;
   let whatIfClickTimer = 0;
+  let whatIfTapResetTimer = 0;
   let whatIfHintTimer = 0;
-  let whatIfHoldTimer = 0;
-  let whatIfHoldState = null;
-  let whatIfLongPressFired = false;
+  let whatIfLastTap = 0;
   let toastTimer;
 
   const $ = id => document.getElementById(id);
@@ -1408,8 +1403,8 @@
     $("planLens").innerHTML =
       '<span class="lens-label">Plan view</span><div class="lens-options" role="group" aria-label="Current or what-if plan">' +
         '<button class="lens-choice current ' + (!enabled ? 'active' : '') + '" onclick="cancelWhatIfInteractions();setScenarioPreview(false)" aria-pressed="' + (!enabled) + '">Current</button>' +
-        '<button class="lens-choice what-if ' + (enabled ? 'active' : '') + '" onclick="activateWhatIf(event)" ondblclick="openWhatIfDetails(event)" onpointerdown="startWhatIfHold(event)" onpointermove="moveWhatIfHold(event)" onpointerup="cancelWhatIfHold(event)" onpointercancel="cancelWhatIfHold(event)" onpointerleave="cancelWhatIfHold(event)" oncontextmenu="return false" aria-describedby="whatIfMoreHint" aria-pressed="' + enabled + '">What-if</button>' +
-        '<span class="lens-more-hint" id="whatIfMoreHint" role="status"><span class="desktop-copy">Double-click for more</span><span class="mobile-copy">Hold for more</span></span>' +
+        '<button class="lens-choice what-if ' + (enabled ? 'active' : '') + '" onclick="activateWhatIf(event)" ondblclick="openWhatIfDetails(event)" aria-describedby="whatIfMoreHint" aria-pressed="' + enabled + '">What-if</button>' +
+        '<span class="lens-more-hint" id="whatIfMoreHint" role="status"><span class="desktop-copy">Double-click for more</span><span class="mobile-copy">Double-tap for more</span></span>' +
       '</div><span class="lens-name">' + escapeHTML(S.scenario.name) + '</span>';
   }
 
@@ -2283,36 +2278,38 @@
     whatIfHintTimer = setTimeout(() => lens.classList.remove('show-more-hint'), 2400);
   };
 
-  window.cancelWhatIfHold = function (event) {
-    if (event && whatIfHoldState && event.pointerId !== whatIfHoldState.pointerId) return;
-    clearTimeout(whatIfHoldTimer);
-    whatIfHoldTimer = 0;
-    if (whatIfHoldState && whatIfHoldState.button) whatIfHoldState.button.classList.remove('is-holding');
-    whatIfHoldState = null;
-  };
-
   window.cancelWhatIfInteractions = function () {
     clearTimeout(whatIfClickTimer);
     whatIfClickTimer = 0;
+    clearTimeout(whatIfTapResetTimer);
+    whatIfTapResetTimer = 0;
+    whatIfLastTap = 0;
     clearTimeout(whatIfHintTimer);
     whatIfHintTimer = 0;
-    window.cancelWhatIfHold();
     const lens = $("planLens");
     if (lens) lens.classList.remove('show-more-hint');
   };
 
   window.activateWhatIf = function (event) {
-    if (whatIfLongPressFired) {
-      whatIfLongPressFired = false;
-      if (event) event.preventDefault();
+    const now = Date.now();
+    if (whatIfLastTap && now - whatIfLastTap < 430) {
+      clearTimeout(whatIfClickTimer);
+      clearTimeout(whatIfTapResetTimer);
+      whatIfClickTimer = 0;
+      whatIfTapResetTimer = 0;
+      whatIfLastTap = 0;
+      window.openWhatIfDetails(event);
       return;
     }
+    whatIfLastTap = now;
+    clearTimeout(whatIfTapResetTimer);
+    whatIfTapResetTimer = setTimeout(() => { whatIfLastTap = 0; whatIfTapResetTimer = 0; }, 460);
     clearTimeout(whatIfClickTimer);
     whatIfClickTimer = setTimeout(() => {
       whatIfClickTimer = 0;
       window.setScenarioPreview(true);
       window.showWhatIfHint();
-    }, 240);
+    }, 180);
   };
 
   window.openWhatIfDetails = function (event) {
@@ -2321,29 +2318,6 @@
     window.setScenarioPreview(true);
     window.toggleFutureCaddy(true);
     window.showWhatIfHint();
-  };
-
-  window.startWhatIfHold = function (event) {
-    if (!event || event.pointerType === 'mouse') return;
-    window.cancelWhatIfHold();
-    whatIfHoldState = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, button: event.currentTarget };
-    event.currentTarget.classList.add('is-holding');
-    window.showWhatIfHint();
-    whatIfHoldTimer = setTimeout(() => {
-      whatIfHoldTimer = 0;
-      whatIfLongPressFired = true;
-      if (whatIfHoldState && whatIfHoldState.button) whatIfHoldState.button.classList.remove('is-holding');
-      whatIfHoldState = null;
-      window.setScenarioPreview(true);
-      window.toggleFutureCaddy(true);
-      window.showWhatIfHint();
-      setTimeout(() => { whatIfLongPressFired = false; }, 900);
-    }, 680);
-  };
-
-  window.moveWhatIfHold = function (event) {
-    if (!whatIfHoldState || !event || event.pointerId !== whatIfHoldState.pointerId) return;
-    if (Math.hypot(event.clientX - whatIfHoldState.startX, event.clientY - whatIfHoldState.startY) > 12) window.cancelWhatIfHold(event);
   };
 
   window.setScenarioPreview = function (checked) {
