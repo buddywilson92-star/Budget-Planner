@@ -444,7 +444,7 @@
     .stage-insight strong { color: var(--text); }
     .stage-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
     .stage-panel h3 { margin-bottom: 8px; }
-    .stage-table-wrap { overflow-x: auto; }
+    .stage-table-wrap { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
     .stage-table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .stage-table th, .stage-table td { padding: 8px 7px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; white-space: nowrap; }
     .stage-table th { color: var(--muted); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
@@ -465,6 +465,7 @@
     .scenario-compare label { display: block; color: var(--muted); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
     .scenario-compare b { display: block; margin-top: 3px; font-size: 16px; }
     .scenario-result-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 15px; }
+    .scenario-result-columns > * { min-width: 0; max-width: 100%; }
     .scenario-note { margin-top: 13px; padding: 10px 12px; border-left: 3px solid var(--teal); border-radius: 0 9px 9px 0; background: rgba(81,214,179,.06); color: var(--muted); font-size: 11px; }
     .scenario-note strong { color: var(--text); }
 
@@ -1459,8 +1460,8 @@
       '<div class="scenario-allocation"><div class="scenario-allocation-head"><div><strong>Where should new AP go?</strong><p class="tiny" style="margin:3px 0 0">The easy default follows the current bucket mix. If every bucket is $0, it splits evenly.</p></div><div class="field" style="min-width:min(100%,250px)"><select class="select scenario-control" onchange="setScenario(\'allocationMode\',this.value)"><option value="proportional" ' + (scenario.allocationMode === 'proportional' ? 'selected' : '') + '>Follow current buckets</option><option value="custom" ' + (scenario.allocationMode === 'custom' ? 'selected' : '') + '>Use custom weights</option></select></div></div>' + customFields + '</div>' +
       '<div class="scenario-compare"><div><label>Weekly AP</label><b>' + money2(base.flow.pool) + ' → ' + money2(preview.flow.pool) + '</b></div><div><label>AP change</label><b class="' + (poolDelta >= 0 ? 'delta-up' : 'delta-down') + '">' + (poolDelta >= 0 ? '+' : '−') + money2(Math.abs(poolDelta)) + '/wk</b></div><div><label>Take-home change</label><b class="' + (incomeDelta >= 0 ? 'delta-up' : 'delta-down') + '">' + (incomeDelta >= 0 ? '+' : '−') + money2(Math.abs(incomeDelta)) + '/mo</b></div><div><label>Goals earlier</label><b>' + goalsEarlier + '</b></div></div>' +
       '<div class="scenario-note"><strong>' + (enabled ? 'What-if view is on across every page.' : 'The app is still showing the Current plan.') + '</strong> These values are preview-only and are never copied into income, bills, buckets, or goals. Use the Current / What-if control at the top at any time.</div>' +
-      '<div class="scenario-result-columns"><div><div class="card-head" style="margin-bottom:7px"><div><h3>Bucket landing</h3><p>Effective weekly amounts after the change and any scaling.</p></div></div><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Bucket</th><th>Current</th><th>What-if</th><th>Change</th></tr></thead><tbody>' + bucketRows + '</tbody></table></div></div>' +
-      '<div><div class="card-head" style="margin-bottom:7px"><div><h3>Goal landing</h3><p>Completion pace using the same priority rules.</p></div></div><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Goal</th><th>Current</th><th>What-if</th><th>Difference</th></tr></thead><tbody>' + goalRows + '</tbody></table></div></div></div>' +
+      '<div class="scenario-result-columns"><div class="stage-panel"><div class="card-head" style="margin-bottom:7px"><div><h3>Bucket landing</h3><p>Effective weekly amounts after the change and any scaling.</p></div></div><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Bucket</th><th>Current</th><th>What-if</th><th>Change</th></tr></thead><tbody>' + bucketRows + '</tbody></table></div></div>' +
+      '<div class="stage-panel"><div class="card-head" style="margin-bottom:7px"><div><h3>Goal landing</h3><p>Completion pace using the same priority rules.</p></div></div><div class="stage-table-wrap"><table class="stage-table"><thead><tr><th>Goal</th><th>Current</th><th>What-if</th><th>Difference</th></tr></thead><tbody>' + goalRows + '</tbody></table></div></div></div>' +
       '<div class="button-row" style="margin-top:14px"><button class="btn" onclick="resetScenario()">Clear what-if</button></div>';
   }
 
